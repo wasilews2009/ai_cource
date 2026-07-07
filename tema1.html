@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Промпт-інженіринг: мова спілкування з генеративним ШІ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F5EF;
+  --paper-2:#EFEBE0;
+  --ink:#20222E;
+  --ink-soft:#565A72;
+  --ink-faint:#8A8DA0;
+  --line:#DEDACB;
+  --violet:#5B4FE0;
+  --violet-deep:#3D33B0;
+  --violet-soft:#EBE8FC;
+  --mint:#1F9A78;
+  --mint-soft:#DFF3EA;
+  --coral:#D8503F;
+  --coral-soft:#FBE6E1;
+  --amber:#C98A2C;
+  --amber-soft:#F8ECD9;
+  --radius:18px;
+  --shadow: 0 1px 2px rgba(32,34,46,.04), 0 8px 24px -12px rgba(32,34,46,.12);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--violet-soft);color:var(--violet-deep);}
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;margin:0 0 .4em;color:var(--ink);}
+p{margin:0 0 1em;color:var(--ink-soft);}
+a{color:var(--violet);}
+.mono{font-family:'JetBrains Mono',monospace;}
+img,svg{max-width:100%;}
+
+/* background texture: soft neuron-dot grid */
+.bg-grid{
+  position:fixed;inset:0;z-index:-1;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(91,79,224,0.07) 1.4px, transparent 1.4px);
+  background-size:26px 26px;
+}
+
+/* ===== LAYOUT ===== */
+.shell{display:flex;max-width:1400px;margin:0 auto;}
+.sidebar{
+  width:264px;flex-shrink:0;position:sticky;top:0;height:100vh;
+  padding:32px 18px 32px 28px;overflow-y:auto;
+  border-right:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+.brand-mark{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--violet),var(--violet-deep));
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.brand-mark svg{width:20px;height:20px;}
+.brand-text{font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;line-height:1.25;}
+.brand-text span{display:block;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;}
+
+nav.toc{display:flex;flex-direction:column;gap:2px;}
+nav.toc a{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:10px;
+  font-size:13.5px;font-weight:500;color:var(--ink-soft);
+  text-decoration:none;transition:.15s;
+}
+nav.toc a .num{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-faint);
+  width:20px;flex-shrink:0;
+}
+nav.toc a:hover{background:var(--paper-2);color:var(--ink);}
+nav.toc a.active{background:var(--violet-soft);color:var(--violet-deep);}
+nav.toc a.active .num{color:var(--violet-deep);}
+
+.main{flex:1;min-width:0;padding:0 0 80px;}
+.section{padding:64px 56px;border-bottom:1px solid var(--line);}
+.section:last-child{border-bottom:none;}
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--violet);font-weight:500;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.eyebrow::before{content:'';width:16px;height:1px;background:var(--violet);}
+.section h2{font-size:32px;max-width:760px;}
+.section > .lead{max-width:640px;font-size:16px;}
+
+/* ===== HERO ===== */
+.hero{
+  padding:72px 56px 56px;position:relative;overflow:hidden;
+}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
+.hero-eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet-deep);
+  background:var(--violet-soft);display:inline-flex;padding:6px 12px;border-radius:100px;
+  letter-spacing:.03em;margin-bottom:20px;font-weight:500;
+}
+.hero h1{font-size:44px;line-height:1.1;max-width:620px;letter-spacing:-.01em;}
+.hero h1 em{font-style:italic;color:var(--violet);}
+.hero .lead{font-size:17px;max-width:520px;margin-top:14px;}
+.hero-stats{display:flex;gap:28px;margin-top:32px;flex-wrap:wrap;}
+.hstat b{font-family:'Fraunces',serif;font-size:26px;display:block;color:var(--ink);}
+.hstat span{font-size:12.5px;color:var(--ink-faint);}
+
+.token-flow{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);
+}
+.token-flow .tf-title{font-size:12px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;margin-bottom:12px;}
+.tf-prompt{
+  font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--paper-2);
+  border-radius:10px;padding:12px 14px;margin-bottom:14px;color:var(--ink);
+}
+.tf-tokens{display:flex;flex-wrap:wrap;gap:6px;}
+.tf-tok{
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:4px 9px;border-radius:7px;
+  background:var(--mint-soft);color:var(--mint);opacity:0;transform:translateY(4px);
+  animation:tokIn .4s ease forwards;
+}
+@keyframes tokIn{to{opacity:1;transform:none;}}
+
+/* ===== CARDS ===== */
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow);
+}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+
+/* timeline (history) */
+.timeline{display:flex;flex-direction:column;gap:0;margin-top:22px;position:relative;}
+.tl-item{display:flex;gap:20px;padding-bottom:26px;position:relative;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-item::before{
+  content:'';position:absolute;left:21px;top:34px;bottom:0;width:2px;background:var(--line);
+}
+.tl-item:last-child::before{display:none;}
+.tl-dot{
+  width:44px;height:44px;border-radius:50%;background:var(--violet-soft);color:var(--violet-deep);
+  display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+  font-weight:700;font-size:12px;flex-shrink:0;z-index:1;border:3px solid var(--paper);
+}
+.tl-body b{display:block;font-family:'Fraunces',serif;font-size:16px;margin-bottom:3px;}
+.tl-body p{margin:0;font-size:14.5px;}
+
+/* classification pills */
+.classif{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;}
+.classif .cl-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;}
+.classif .cl-card h4{font-size:14px;color:var(--violet-deep);margin-bottom:8px;}
+.classif .cl-card ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-soft);}
+.classif .cl-card li{margin-bottom:4px;}
+
+/* mindmap svg containers */
+.mindmap-wrap{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;box-shadow:var(--shadow);margin-top:24px;
+}
+.mindmap-wrap .mm-caption{
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink-faint);
+  text-align:center;margin-top:10px;
+}
+
+/* tables */
+table.cmp{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;}
+table.cmp th{
+  text-align:left;font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;
+  padding:10px 14px;background:var(--paper-2);color:var(--ink);
+}
+table.cmp td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft);}
+table.cmp tr:last-child td{border-bottom:none;}
+table.cmp th:first-child, table.cmp td:first-child{border-radius:0;}
+.bad-cell{color:var(--coral);}
+.good-cell{color:var(--mint);}
+td.bad-cell,td.good-cell{color:var(--ink-soft);}
+.tag-bad, .tag-good{
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+  padding:2px 8px;border-radius:100px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;
+}
+.tag-bad{background:var(--coral-soft);color:var(--coral);}
+.tag-good{background:var(--mint-soft);color:var(--mint);}
+
+/* rule accordion */
+.rule{
+  background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;
+  overflow:hidden;
+}
+.rule-head{
+  display:flex;align-items:center;gap:16px;padding:18px 22px;cursor:pointer;user-select:none;
+}
+.rule-num{
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--violet);
+  background:var(--violet-soft);width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.rule-head h4{margin:0;font-size:16.5px;flex:1;}
+.rule-head .chev{transition:.2s;color:var(--ink-faint);flex-shrink:0;}
+.rule.open .rule-head .chev{transform:rotate(180deg);}
+.rule-body{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.rule.open .rule-body{max-height:2400px;}
+.rule-body-inner{padding:0 22px 22px;}
+.rule-problem{font-size:14px;color:var(--ink-faint);margin-bottom:14px;font-style:italic;}
+.example-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+.ex-box{border-radius:12px;padding:14px 16px;font-size:13.5px;}
+.ex-bad{background:var(--coral-soft);}
+.ex-good{background:var(--mint-soft);}
+.ex-box p{margin:0;color:var(--ink);}
+.tip-box{
+  margin-top:12px;background:var(--paper-2);border-radius:12px;padding:14px 16px;
+  font-size:13.5px;border-left:3px solid var(--violet);
+}
+.tip-box b{color:var(--violet-deep);}
+
+/* prompt code blocks */
+.prompt-block{
+  background:var(--ink);color:#F2F1FA;border-radius:14px;padding:18px 20px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:14px 0;
+  white-space:pre-wrap;position:relative;
+}
+.prompt-block::before{
+  content:'PROMPT';position:absolute;top:10px;right:16px;font-size:9.5px;letter-spacing:.1em;
+  color:#7A76A8;
+}
+.prompt-block .role{color:#9C8CFF;}
+.prompt-block .hl{color:#7FE3C0;}
+
+/* model cards */
+.model-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;}
+.model-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;}
+.model-card .m-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.model-dot{width:12px;height:12px;border-radius:50%;}
+.model-card h4{font-size:16px;margin:0;}
+.model-card ul{padding-left:18px;font-size:13px;color:var(--ink-soft);margin:0 0 12px;}
+.model-card li{margin-bottom:4px;}
+
+/* universal template builder (interactive) */
+.builder{
+  display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px;
+}
+.builder-field label{
+  display:block;font-size:12px;font-weight:600;color:var(--ink-faint);margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:.03em;
+}
+.builder-field input, .builder-field select, .builder-field textarea{
+  width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+  font-family:'Inter',sans-serif;font-size:14px;background:var(--paper);color:var(--ink);
+  margin-bottom:14px;
+}
+.builder-field textarea{resize:vertical;min-height:52px;}
+.builder-out{
+  background:var(--ink);border-radius:16px;padding:20px;color:#F2F1FA;
+  font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.75;white-space:pre-wrap;
+  min-height:260px;
+}
+.builder-out .lbl{color:#9C8CFF;font-weight:700;}
+.builder-out .val{color:#7FE3C0;}
+
+/* practice tasks */
+.task{
+  background:#fff;border:1px solid var(--line);border-radius:20px;margin-bottom:22px;overflow:hidden;
+}
+.task-head{
+  display:flex;align-items:center;gap:16px;padding:20px 24px;background:var(--paper-2);cursor:pointer;
+}
+.task-num{
+  font-family:'Fraunces',serif;font-weight:600;font-size:20px;color:var(--violet-deep);
+  width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;border:1px solid var(--line);
+}
+.task-head h3{margin:0;font-size:18px;flex:1;}
+.task-head .chev{color:var(--ink-faint);transition:.2s;flex-shrink:0;}
+.task.open .task-head .chev{transform:rotate(180deg);}
+.task-body{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+.task.open .task-body{max-height:4000px;}
+.task-body-inner{padding:24px;}
+.task-goal{
+  font-size:14px;background:var(--violet-soft);color:var(--violet-deep);border-radius:12px;
+  padding:12px 16px;margin-bottom:20px;
+}
+.steps{list-style:none;margin:0;padding:0;}
+.steps li{
+  display:flex;gap:16px;padding-bottom:20px;position:relative;
+}
+.steps li::before{
+  content:'';position:absolute;left:15px;top:34px;bottom:0;width:2px;background:var(--line);
+}
+.steps li:last-child::before{display:none;}
+.step-icon{
+  width:32px;height:32px;border-radius:9px;background:var(--mint-soft);color:var(--mint);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;
+}
+.step-text{flex:1;font-size:14.5px;padding-top:4px;}
+.step-text b{color:var(--ink);}
+
+/* quiz */
+.quiz-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.quiz-tab{
+  padding:8px 16px;border-radius:100px;border:1px solid var(--line);background:#fff;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+}
+.quiz-tab.active{background:var(--violet);color:#fff;border-color:var(--violet);}
+.quiz-list{display:none;flex-direction:column;gap:10px;}
+.quiz-list.active{display:flex;}
+.q-item{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;
+}
+.q-item .q-text{display:flex;gap:10px;font-size:14.5px;color:var(--ink);}
+.q-item .q-text .qnum{font-family:'JetBrains Mono',monospace;color:var(--violet);font-weight:700;flex-shrink:0;}
+.q-hint{
+  max-height:0;overflow:hidden;transition:.25s;font-size:13.5px;color:var(--ink-soft);
+  margin-top:0;padding-left:26px;
+}
+.q-item.open .q-hint{max-height:200px;margin-top:10px;}
+
+/* glossary */
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:20px;}
+.gloss-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+.gloss-item b{display:block;font-family:'Fraunces',serif;color:var(--violet-deep);margin-bottom:4px;font-size:15px;}
+.gloss-item span{font-size:13.5px;color:var(--ink-soft);}
+
+/* criteria table + footer quote */
+.quote-block{
+  margin-top:40px;padding:28px 32px;border-left:3px solid var(--violet);background:var(--violet-soft);
+  border-radius:0 16px 16px 0;
+}
+.quote-block p{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--ink);margin-bottom:6px;}
+.quote-block span{font-size:13px;color:var(--violet-deep);font-weight:600;}
+
+/* badges for scale */
+.scale{display:flex;gap:4px;margin-top:8px;}
+.scale i{width:22px;height:6px;border-radius:4px;background:var(--line);}
+.scale i.on{background:var(--violet);}
+
+footer{text-align:center;padding:40px 20px;font-size:12.5px;color:var(--ink-faint);}
+
+@media (max-width:980px){
+  .sidebar{display:none;}
+  .section{padding:44px 22px;}
+  .hero{padding:44px 22px;}
+  .hero-grid, .grid-2, .grid-3, .classif, .model-cards, .builder, .example-pair, .gloss{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2.4" fill="#fff"/><circle cx="5" cy="19" r="2.4" fill="#fff"/><circle cx="19" cy="19" r="2.4" fill="#fff"/><path d="M12 7.4V13M12 13L6.2 17M12 13L17.8 17" stroke="#fff" stroke-width="1.4"/></svg>
+      </div>
+      <div class="brand-text">STEAM-HUB<span>Тема 1 · Prompt Engineering</span></div>
+    </div>
+    <nav class="toc" id="toc">
+      <a href="#hero"><span class="num">00</span>Вступ</a>
+      <a href="#part1"><span class="num">01</span>Що таке ШІ</a>
+      <a href="#part2"><span class="num">02</span>Генерація текстів</a>
+      <a href="#part3"><span class="num">03</span>Промпт-інженіринг</a>
+      <a href="#rules"><span class="num">04</span>11 правил</a>
+      <a href="#algorithm"><span class="num">05</span>Алгоритм і шаблон</a>
+      <a href="#models"><span class="num">06</span>ChatGPT · Gemini · Claude</a>
+      <a href="#practice"><span class="num">07</span>Практичні завдання</a>
+      <a href="#simulator"><span class="num">08</span>Симулятор результату</a>
+      <a href="#questions"><span class="num">09</span>Контрольні питання</a>
+      <a href="#reference"><span class="num">10</span>Довідник і критерії</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HERO -->
+    <section class="section hero" id="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-eyebrow">STEAM-HUB · Тема 1</div>
+          <h1>Промпт-інженіринг — <em>мова</em>, якою ми говоримо з генеративним ШІ</h1>
+          <p class="lead">Інтерактивний посібник поєднує теорію (загальні поняття ШІ, генерація текстів, 11 правил ефективного промпту) з практичними завданнями, симулятором результату та контрольними питаннями для самоперевірки.</p>
+          <div class="hero-stats">
+            <div class="hstat"><b>11</b><span>правил промпт-інженірингу</span></div>
+            <div class="hstat"><b>6</b><span>практичних завдань</span></div>
+            <div class="hstat"><b>15</b><span>контрольних питань</span></div>
+            <div class="hstat"><b>3</b><span>моделі ШІ у фокусі</span></div>
+          </div>
+        </div>
+        <div class="token-flow">
+          <div class="tf-title">// авторегресійна генерація — модель передбачає наступний токен</div>
+          <div class="tf-prompt">Промпт: «Кава, яка змушує забути про...»</div>
+          <div class="tf-tokens" id="tokDemo"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PART 1 -->
+    <section class="section" id="part1">
+      <div class="eyebrow">Частина 1</div>
+      <h2>Загальні поняття штучного інтелекту</h2>
+      <p class="lead"><b>Штучний інтелект (ШІ)</b> — штучно створена система, здатна імітувати інтелектуальну та творчу діяльність людини: навчатися, розв'язувати задачі, розуміти мову, розпізнавати зображення й генерувати контент.</p>
+
+      <div class="grid-2" style="margin-top:28px;">
+        <div class="card">
+          <h4 style="font-size:15px;color:var(--violet-deep);">Історичні віхи</h4>
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-dot">1943</div>
+              <div class="tl-body"><b>Маккалок і Піттс</b><p>Стаття про логічне числення нервової активності — концепція штучної нейронної мережі, що імітує мозок людини.</p></div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot">1950</div>
+              <div class="tl-body"><b>Тест Тюрінга</b><p>Алан Тюрінг у статті «Чи може машина мислити?» описав перевірку: чи здатна машина імітувати розмову настільки переконливо, що людина не відрізнить її від іншої людини.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;color:var(--violet-deep);">Ієрархія понять</h4>
+          <div class="mindmap-svg" id="hierarchySvg"></div>
+        </div>
+      </div>
+
+      <h4 style="margin-top:32px;font-size:16px;">Класифікація ШІ</h4>
+      <div class="classif">
+        <div class="cl-card">
+          <h4>За можливостями</h4>
+          <ul>
+            <li><b>Вузький (слабкий)</b> — спеціалізований на конкретних завданнях</li>
+            <li><b>Загальний (сильний)</b> — виконує будь-які інтелектуальні завдання, як людина</li>
+          </ul>
+        </div>
+        <div class="cl-card">
+          <h4>За типом взаємодії</h4>
+          <ul>
+            <li><b>Генеративний</b> — створює новий контент (текст, зображення, музику)</li>
+            <li><b>Аналітичний</b> — аналізує дані та робить прогнози</li>
+          </ul>
+        </div>
+        <div class="cl-card">
+          <h4>За областю застосування</h4>
+          <ul>
+            <li>Обробка природної мови (NLP)</li>
+            <li>Комп'ютерний зір</li>
+            <li>Робототехніка, рекомендаційні системи</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- PART 2 -->
+    <section class="section" id="part2">
+      <div class="eyebrow">Частина 2</div>
+      <h2>Генерація текстів</h2>
+      <p class="lead"><b>Генерація текстів</b> — процес автоматичного створення текстового контенту генеративними моделями (GPT, Gemini, Claude), навченими на величезних масивах текстів.</p>
+
+      <div class="mindmap-wrap">
+        <div id="autoregSvg"></div>
+        <div class="mm-caption">Авторегресійна генерація: модель передбачає наступний токен на основі всього попереднього контексту — і так по колу</div>
+      </div>
+
+      <div class="grid-2" style="margin-top:24px;">
+        <div class="card">
+          <h4 style="font-size:15px;">Відкритий запит</h4>
+          <p style="font-size:13.5px;">Змушує ШІ відповідати повно та розгорнуто.</p>
+          <div class="prompt-block">«Опиши основні фактори, які впливають на зміну клімату»</div>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;">Закритий запит</h4>
+          <p style="font-size:13.5px;">Дозволяє отримати коротку, чітко визначену відповідь.</p>
+          <div class="prompt-block">«Чи є вирубка дерев фактором, який впливає на зміну клімату?»</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PART 3 -->
+    <section class="section" id="part3">
+      <div class="eyebrow">Частина 3</div>
+      <h2>Промпт-інженіринг</h2>
+      <p class="lead"><b>Промпт-інженіринг</b> — мистецтво й наука формулювання запитів до генеративного ШІ для отримання найточніших і найрелевантніших відповідей. Якість результату напряму залежить від того, як сформульований вхідний запит.</p>
+      <div class="tip-box" style="max-width:640px;"><b>Ключова ідея:</b> ШІ — не телепат. Він не знає, що ви маєте на увазі, поки ви не поясните це чітко.</div>
+    </section>
+
+    <!-- RULES -->
+    <section class="section" id="rules">
+      <div class="eyebrow">Частина 4</div>
+      <h2>11 правил промпт-інженірингу</h2>
+      <p class="lead">Кожне правило — це проблема, приклади «до/після» та практична рекомендація для конкретної моделі. Натисніть на правило, щоб розгорнути.</p>
+
+      <div style="margin-top:24px;" id="rulesList">
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">01</div><h4>Будьте конкретними та чіткими</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Розмиті запити дають розмиті відповіді.</p>
+            <div class="example-pair">
+              <div class="ex-box ex-bad"><span class="tag-bad">✕ Поганий</span><p>«Напиши про каву»</p></div>
+              <div class="ex-box ex-good"><span class="tag-good">✓ Хороший</span><p>«Напиши короткий опис (3–4 речення) для Instagram про ефіопську каву з нотками чорниці й шоколаду. Тон — теплий, знайомий.»</p></div>
+            </div>
+            <div class="tip-box"><b>Порада:</b> починайте промпт із конкретного дієслова — «Напиши», «Поясни», «Проаналізуй», «Порівняй», «Створи». Уникайте «Що ти думаєш про…?» — модель не думає, вона генерує текст.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">02</div><h4>Вказуйте контекст та обмеження</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Без контексту ШІ дає загальну відповідь, що не відповідає вашим потребам.</p>
+            <div class="example-pair">
+              <div class="ex-box ex-bad"><span class="tag-bad">✕ Без контексту</span><p>«Які найкращі способи інвестування коштів?»</p></div>
+              <div class="ex-box ex-good"><span class="tag-good">✓ З контекстом</span><p>«…для людини, не схильної до ризику, з горизонтом 5 років і капіталом 50 000 грн?»</p></div>
+            </div>
+            <div class="tip-box"><b>ChatGPT:</b> додайте розділ «Контекст: …». <b>Gemini:</b> формат «Враховуючи [X], зроби [Y], уникаючи [Z]». <b>Claude:</b> чутливий до тону — «Відповідай об'єктивно, без моралізаторства».</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">03</div><h4>Використовуйте рольове моделювання</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">За замовчуванням ШІ дає нейтральну, загальну відповідь.</p>
+            <div class="prompt-block"><span class="role">Ти — філософ-етик</span>, який консультує технологічні компанії з питань відповідального ШІ. Проаналізуй етичні ризики використання ШІ у системах розпізнавання облич у громадських місцях. Вкажи <span class="hl">3 аргументи «за» та 3 «проти»</span>, уникай емоційних оцінок.</div>
+            <div class="tip-box"><b>Порада:</b> роль задає стиль, глибину й точку зору відповіді — «вчитель фізики з 20-річним стажем» дасть інакший виклад теорії відносності, ніж просто «поясни теорію відносності».</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">04</div><h4>Надавайте приклади (Few-shot prompting)</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">ШІ може не зрозуміти бажаний формат чи стиль без зразка.</p>
+            <div class="prompt-block">Перепиши слоган у креативному стилі, як у прикладах:
+Приклад 1 → Вхід: «Найкраща кава у місті» — Вихід: «Кава, яка змушує забути про будильник»
+Приклад 2 → Вхід: «Швидка доставка» — Вихід: «Швидше, ніж ти встигнеш передумати»
+Тепер твоє завдання → Вхід: «Якісний одяг за доступною ціною» — Вихід:</div>
+            <div class="tip-box"><b>Claude</b> чутливий до якості прикладів — 2–3 високоякісні зразки дають високу точність відтворення стилю. <b>Gemini</b> добре сприймає приклади у форматі markdown-таблиці.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">05</div><h4>Обмежуйте обсяг відповіді</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">ШІ може дати надто довгу або надто коротку відповідь.</p>
+            <table class="cmp"><tr><th>Запит</th><th>Результат</th></tr>
+              <tr><td>«Напиши у 100 словах»</td><td>Точний обсяг</td></tr>
+              <tr><td>«Не більше 3 речень»</td><td>Лаконічність</td></tr>
+              <tr><td>«5 пунктів, кожен ≤15 слів»</td><td>Структурованість</td></tr>
+              <tr><td>«У форматі твіту (280 символів)»</td><td>Формат під платформу</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">06</div><h4>Вказуйте формат вихідних даних</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">ШІ може видати текст, коли потрібна таблиця, або навпаки.</p>
+            <table class="cmp"><tr><th>Формат</th><th>Приклад промпту</th></tr>
+              <tr><td>Список</td><td>«Нумерований список з 7 пунктів»</td></tr>
+              <tr><td>Таблиця</td><td>«Колонки: Назва, Опис, Переваги, Недоліки»</td></tr>
+              <tr><td>JSON</td><td>«Поля: title, content, tags»</td></tr>
+              <tr><td>Код</td><td>«Python-функція з коментарями до кожного рядка»</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">07</div><h4>Використовуйте ітеративний підхід</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Рідко перший промпт дає ідеальний результат.</p>
+            <ul style="font-size:14px;color:var(--ink-soft);padding-left:20px;">
+              <li><b>Крок 1 (загальний):</b> «Напиши сценарій TikTok-відео про приготування кави»</li>
+              <li><b>Крок 2 (уточнення):</b> «Зроби динамічнішим — швидкі монтажні кадри, звук, хук на початку»</li>
+              <li><b>Крок 3 (деталізація):</b> «Додай таймінг кожної сцени та текст на екрані»</li>
+            </ul>
+            <div class="tip-box"><b>Порада:</b> зберігайте вдалі промпти у власну базу (Notion, Google Docs) — позначайте, для якої моделі промпт спрацював найкраще.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">08</div><h4>Просіть ШІ «думати покроково» (Chain of Thought)</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Для складних завдань ШІ може дати поверхневу відповідь.</p>
+            <div class="prompt-block">Ти — фінансовий аналітик. Проаналізуй, чи вигідно відкривати кав'ярню у центрі Львова. Розбий на етапи: <span class="hl">1) ринок 2) конкуренти 3) фінмодель 4) фінальна рекомендація</span>. Після кожного етапу постав оцінку ✅/❌.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">09</div><h4>Просіть проаналізувати переваги й недоліки</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">ШІ може дати упереджену або однобічну відповідь.</p>
+            <div class="prompt-block">«Проаналізуй використання ШІ для написання академічних робіт. Обговори <span class="hl">всі</span> переваги й недоліки (не менше 5 пунктів кожні), перш ніж дати фінальну нейтральну оцінку.»</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">10</div><h4>Перевіряйте розуміння завдання</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">ШІ може зрозуміти завдання не так, як ви задумали.</p>
+            <div class="prompt-block">«…Перед виконанням завдання відповідай: <span class="hl">«Зрозумів завдання»</span> — і коротко перефразуй, що ти зрозумів. Потім починай виконувати.»</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">11</div><h4>Стратегічно поєднуйте відкриті й закриті запити</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <div class="example-pair">
+              <div class="ex-box" style="background:var(--violet-soft);"><span style="color:var(--violet-deep);font-weight:700;font-size:12px;">ВІДКРИТІ — для</span><p>мозкового штурму, генерації ідей, дослідження теми, творчих завдань</p></div>
+              <div class="ex-box" style="background:var(--amber-soft);"><span style="color:var(--amber);font-weight:700;font-size:12px;">ЗАКРИТІ — для</span><p>фактів, підтвердження/спростування, структурованих відповідей, економії часу</p></div>
+            </div>
+            <div class="tip-box"><b>Комбінація:</b> Крок 1 (відкритий) «Які тренди у дизайні логотипів 2026?» → Крок 2 (закритий) «Чи є мінімалізм одним із них?» → Крок 3 «Наведи 3 приклади брендів».</div>
+          </div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ALGORITHM + TEMPLATE -->
+    <section class="section" id="algorithm">
+      <div class="eyebrow">Частина 6</div>
+      <h2>Загальний алгоритм і конструктор промпту</h2>
+      <p class="lead">Ментальна карта восьмикрокового алгоритму формулювання промпту — і одразу під нею інтерактивний конструктор, що збирає ваш власний промпт за universal-шаблоном.</p>
+
+      <div class="mindmap-wrap">
+        <div id="algoSvg"></div>
+        <div class="mm-caption">Крок 8 повертає до кроку 1 — це ітеративний цикл, а не одноразова дія</div>
+      </div>
+
+      <h4 style="margin-top:36px;">🧩 Конструктор універсального промпту</h4>
+      <p style="font-size:14px;max-width:600px;">Заповніть поля — конструктор одразу збере повний промпт за шаблоном «Роль → Контекст → Завдання → Формат → Обмеження → Приклад → Перевірка».</p>
+      <div class="builder">
+        <div>
+          <div class="builder-field"><label>Роль / професія ШІ</label><input id="b-role" type="text" placeholder="напр. продюсер подкастів із 10-річним досвідом"></div>
+          <div class="builder-field"><label>Контекст (ситуація, аудиторія, мета)</label><textarea id="b-context" placeholder="напр. подкаст про ШІ в креативних індустріях для аудиторії 25–35 років"></textarea></div>
+          <div class="builder-field"><label>Завдання</label><input id="b-task" type="text" placeholder="напр. склади концепцію подкасту"></div>
+          <div class="builder-field"><label>Формат відповіді</label><input id="b-format" type="text" placeholder="напр. назва, структура епізоду, промо-стратегія"></div>
+          <div class="builder-field"><label>Обмеження (обсяг, тон, що уникати)</label><input id="b-constraints" type="text" placeholder="напр. 30–40 хв, мінімальний бюджет"></div>
+          <div class="builder-field"><label>Приклад / орієнтир (необов'язково)</label><input id="b-example" type="text" placeholder="напр. на кшталт «The Tim Ferriss Show»"></div>
+        </div>
+        <div class="builder-out mono" id="builderOut">Заповніть поля зліва — промпт з'явиться тут…</div>
+      </div>
+    </section>
+
+    <!-- MODELS -->
+    <section class="section" id="models">
+      <div class="eyebrow">Частина 5</div>
+      <h2>Специфіка моделей: ChatGPT · Gemini · Claude</h2>
+      <div class="model-cards">
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#10A37F;"></div><h4>ChatGPT (OpenAI)</h4></div>
+          <ul><li>Чудово розуміє структуровані промпти</li><li>Підтримує рольове моделювання</li><li>Добре працює з few-shot прикладами</li><li>Генерує код багатьма мовами</li></ul>
+          <div class="tip-box" style="margin-top:0;font-size:12.5px;">Системні інструкції: «Ти — [роль]. Твій стиль — […]». Теги «Контекст: … Завдання: … Формат: …»</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#4285F4;"></div><h4>Gemini (Google)</h4></div>
+          <ul><li>Доступ до актуальної інформації</li><li>Добре працює з мультимодальними запитами</li><li>Підтримує довгі контексти</li><li>Чутливий до детальних обмежень</li></ul>
+          <div class="tip-box" style="margin-top:0;font-size:12.5px;">Формат: «Враховуючи…, зроби…, уникаючи…». Просіть актуальні дані: «за 2025–2026 роки». Форматуйте у таблицях.</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#D97757;"></div><h4>Claude (Anthropic)</h4></div>
+          <ul><li>Висока якість аналітичних відповідей</li><li>Велике вікно контексту</li><li>Добре працює з довгими документами</li><li>Чутливий до тону й етичних аспектів</li></ul>
+          <div class="tip-box" style="margin-top:0;font-size:12.5px;">Надавайте повний контекст, будьте ввічливими у формулюваннях. Ідеально для аналізу довгих текстів і наукових статей.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRACTICE -->
+    <section class="section" id="practice">
+      <div class="eyebrow">Практична частина</div>
+      <h2>6 практичних завдань з покроковими інструкціями</h2>
+      <p class="lead">Мета: опанувати базові прийоми промпт-інженірингу на реальних діалогах з ChatGPT, Gemini або Claude. Потрібно: доступ до генеративного ШІ + текстовий редактор для фіксації результатів.</p>
+
+      <div id="tasksList" style="margin-top:24px;">
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">1</div><h3>Відкритий vs закритий запит</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Зрозуміти різницю між відкритими й закритими запитами та навчитися обирати відповідний тип залежно від мети.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Оберіть тему для дослідження, напр. <b>«Вплив соцмереж на ментальне здоров'я»</b> або <b>«Тренди у графічному дизайні 2026»</b>.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Відкрийте діалог із ШІ (рекомендовано ChatGPT або Gemini).</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Сформулюйте <b>відкритий запит</b>: «Опиши основні фактори, які впливають на ментальне здоров'я молоді в умовах активного використання соцмереж.»</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Збережіть відповідь у текстовий документ.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">У тому ж діалозі сформулюйте <b>закритий запит</b> на ту ж тему: «Чи є тривале використання Instagram фактором негативного впливу на самооцінку підлітків?»</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Збережіть другу відповідь.</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Заповніть таблицю порівняння за критеріями: обсяг відповіді, кількість аспектів, глибина аналізу, користь для мозкового штурму, користь для швидкого факту.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text"><b>Висновок (3–5 речень):</b> який тип запиту кращий для яких задач у креативній діяльності?</div></li>
+            </ul>
+            <table class="cmp" style="margin-top:8px;">
+              <tr><th>Критерій</th><th>Відкритий запит</th><th>Закритий запит</th></tr>
+              <tr><td>Обсяг відповіді</td><td>—</td><td>—</td></tr>
+              <tr><td>Кількість аспектів</td><td>—</td><td>—</td></tr>
+              <tr><td>Глибина аналізу</td><td>—</td><td>—</td></tr>
+              <tr><td>Користь для мозкового штурму</td><td>—</td><td>—</td></tr>
+              <tr><td>Користь для швидкого факту</td><td>—</td><td>—</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">2</div><h3>Контекст та обмеження</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Навчитися додавати контекст до запитів для персоналізованих і релевантних відповідей.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Оберіть тему: вивчення мови, планування відпочинку, крафтовий бізнес, реклама, подарунок.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Сформулюйте запит <b>без контексту</b>: «Які найкращі способи вивчення англійської мови?»</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Отримайте й збережіть відповідь.</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Додайте мінімум 4 контекстні елементи — <b>Хто? Чого? Коли? Де? Як? Скільки?</b></div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Отримайте й збережіть другу відповідь.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Порівняйте за критеріями: конкретність, корисність, персоналізація, застосовність.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Сформулюйте правило: «Контекст покращує результат запиту, коли…»</div></li>
+            </ul>
+            <div class="prompt-block">«Які найкращі способи вивчення англійської мови для <span class="hl">журналістки 28 років</span> (хто), яка потребує <span class="hl">рівня B2 для роботи з іноземними джерелами</span> (чого), <span class="hl">за 4 місяці</span> (коли), <span class="hl">вдома без репетитора</span> (де), <span class="hl">за допомогою додатків та фільмів</span> (як), <span class="hl">по 30 хв на день</span> (скільки)?»</div>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">3</div><h3>Джерела та аспекти</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Навчитися конкретизувати запити через вказівку джерел і аспектів для об'єктивності відповіді.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Візьміть 4 базові запити й додайте: конкретне джерело/автора, конкретний аспект, формат вихідних даних.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Введіть усі 4 покращені запити в ШІ.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Проаналізуйте: чи вказав ШІ джерела? Чи відповідає аспект запиту?</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Оберіть власну тему з креативної сфери та сформулюйте запит із джерелом та аспектом.</div></li>
+            </ul>
+            <table class="cmp">
+              <tr><th>Базовий запит</th><th>Покращений варіант</th></tr>
+              <tr><td>«Розкажи про Велику депресію»</td><td>«…1929–1939 рр. (за даними ФРС, Мілтона Фрідмана та Анни Шварц). Акцент на причинах і наслідках для економіки США.»</td></tr>
+              <tr><td>«Чим ML відрізняється від DL?»</td><td>«Порівняй за публікацією Goodfellow et al., 2016. Таблиця: Критерій | ML | DL.»</td></tr>
+              <tr><td>«Як працює розпізнавання мови?»</td><td>«За моделлю wav2vec 2.0 (Meta AI): 1) архітектура 2) етапи обробки 3) приклад застосування.»</td></tr>
+              <tr><td>«Як електродвигуни вплинули на світ?»</td><td>«За дослідженнями Томаса Хьюза: 3 ключові зміни, 2 статистичні дані, 1 неочікуваний наслідок.»</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">4</div><h3>Few-shot prompting</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Опанувати техніку навчання ШІ потрібному формату через приклади.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Запит <b>без прикладу</b>: «Поясни, що таке метафора в літературі.»</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Збережіть відповідь.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Запит <b>з прикладом</b>: «…використовуючи приклад із «Ромео і Джульєтти» (напр.: «Джульєтта — це сонце»).»</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Збережіть відповідь.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Порівняйте: як приклад вплинув на глибину, конкретність і зрозумілість?</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Складіть власний few-shot промпт за шаблоном «слогани» (2 приклади + нове завдання).</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Введіть промпт у ШІ, оцініть, чи відтворив він стиль прикладів.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Додайте 3-й приклад — чи покращилась якість?</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">5</div><h3>Ітеративний підхід</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Навчитися покроково покращувати відповідь ШІ через уточнення та ітерації.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Оберіть тему діалогу (сценарій TikTok, пост для блогу, концепція логотипу).</div></li>
+              <li><div class="step-icon">2</div><div class="step-text"><b>Ітерація 1</b> — загальний запит: «Напиши сценарій короткого відео для TikTok про приготування кави.» Збережіть.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text"><b>Ітерація 2</b> — деталі: «Зроби динамічнішим — монтажні кадри, звук, хук на початку.» Збережіть.</div></li>
+              <li><div class="step-icon">4</div><div class="step-text"><b>Ітерація 3</b> — формат: «Додай таймінг кожної сцени та текст на екрані.» Збережіть.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Проаналізуйте еволюцію якості від ітерації до ітерації.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">У кожній ітерації додавайте: реальні кейси, конкретні обмеження, вимоги до формату.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Створіть власну «базу вдалих промптів» — 3–5 найкращих комбінацій.</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">6</div><h3>Комплексний промпт — стратегія «7 рівнів»</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Синтезувати всі вивчені правила в одному складному, багаторівневому промпті.</div>
+            <div class="mindmap-wrap" style="margin-top:0;">
+              <div id="sevenLevelsSvg"></div>
+            </div>
+            <ul class="steps" style="margin-top:20px;">
+              <li><div class="step-icon">1</div><div class="step-text">Оберіть тему з креативної сфери (подкаст, рекламна кампанія, навчальний курс).</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Пройдіть усі 7 рівнів по черзі, додаючи по одному елементу.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Складіть фінальний комплексний промпт, об'єднавши всі рівні.</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Введіть промпт у ШІ.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Оцініть результат 1–10 за критеріями: відповідність запиту, корисність, структурованість, креативність.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Якщо результат незадовільний — поверніться до попередніх рівнів і уточніть.</div></li>
+            </ul>
+            <div class="prompt-block"><span class="role">Ти — продюсер подкастів</span> із 10-річним досвідом роботи на Spotify та Apple Podcasts. Склади концепцію подкасту про використання ШІ в креативних індустріях для аудиторії 25–35 років. Тривалість епізоду: <span class="hl">30–40 хв</span>. Бюджет: мінімальний. Формат: 1) Назва і концепція 2) Структура епізоду 3) Промо-стратегія. На кшталт «The Tim Ferriss Show». Перед виконанням напиши: «Зрозумів завдання» і перефразуй, що потрібно зробити.</div>
+          </div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SIMULATOR -->
+    <section class="section" id="simulator">
+      <div class="eyebrow">Симуляція результату</div>
+      <h2>Симулятор: як прийоми промпт-інженірингу змінюють якість відповіді</h2>
+      <p class="lead">Увімкніть прийоми нижче й подивіться, як «відповідь ШІ» та оцінка якості змінюються в реальному часі. Це не звернення до реального ШІ — це навчальна модель, що ілюструє логіку правил.</p>
+
+      <div class="card" style="margin-top:24px;">
+        <div class="grid-2" style="align-items:start;gap:28px;">
+          <div>
+            <h4 style="font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:14px;">Прийоми промпт-інженірингу</h4>
+            <div id="simToggles" style="display:flex;flex-direction:column;gap:10px;"></div>
+          </div>
+          <div>
+            <h4 style="font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:14px;">Оцінка якості промпту</h4>
+            <div class="scale" id="qualityScale"></div>
+            <div id="qualityLabel" style="font-family:'JetBrains Mono',monospace;font-size:13px;margin:10px 0 20px;color:var(--violet-deep);font-weight:700;"></div>
+            <div style="background:var(--paper-2);border-radius:14px;padding:16px 18px;font-size:13.5px;line-height:1.7;color:var(--ink);" id="simResponse"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUESTIONS -->
+    <section class="section" id="questions">
+      <div class="eyebrow">Контрольні питання</div>
+      <h2>Перевірте рівень засвоєння</h2>
+      <p class="lead">Питання трьох рівнів складності. Натисніть на питання, щоб побачити довідкову підказку — спробуйте спочатку відповісти самостійно.</p>
+
+      <div class="quiz-tabs">
+        <div class="quiz-tab active" data-tab="basic">Базовий рівень</div>
+        <div class="quiz-tab" data-tab="mid">Середній рівень</div>
+        <div class="quiz-tab" data-tab="adv">Продвинутий рівень</div>
+      </div>
+
+      <div class="quiz-list active" data-list="basic">
+        <div class="q-item"><div class="q-text"><span class="qnum">1.</span>Що таке промпт-інженіринг і чому він важливий для роботи з генеративним ШІ?</div><div class="q-hint">Це формулювання запитів для отримання найточніших відповідей — див. Частину 3: якість результату залежить від якості вхідного запиту.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">2.</span>Яка основна різниця між відкритим та закритим запитом? Наведіть приклад кожного.</div><div class="q-hint">Відкритий — розгорнута відповідь («Опиши…»); закритий — коротка й чітка («Чи є…?»). Див. Частину 2.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">3.</span>Чому контекст у запиті підвищує якість відповіді ШІ? Наведіть 2 приклади контекстних елементів.</div><div class="q-hint">Контекст персоналізує відповідь. Елементи: Хто? Чого? Коли? Де? Як? Скільки? — див. Правило 2.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">4.</span>Що таке few-shot prompting і коли його варто використовувати?</div><div class="q-hint">Надання прикладів бажаного формату/стилю — використовується, коли потрібна точна відповідність стилю. Див. Правило 4.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">5.</span>Як рольове моделювання впливає на результат генерації тексту?</div><div class="q-hint">Роль задає експертизу, тон і перспективу відповіді. Див. Правило 3.</div></div>
+      </div>
+
+      <div class="quiz-list" data-list="mid">
+        <div class="q-item"><div class="q-text"><span class="qnum">6.</span>Опишіть алгоритм ітеративного підходу до промпт-інженірингу. Наведіть приклад із 3 ітераціями.</div><div class="q-hint">Загальний запит → уточнення деталей → конкретизація формату. Див. Правило 7 та Завдання 5.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">7.</span>Як вказівка джерела (бази даних) у запиті впливає на об'єктивність відповіді?</div><div class="q-hint">Прив'язка до конкретного автора/дослідження звужує й перевіряє відповідь. Див. Завдання 3.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">8.</span>Поясніть, як обмеження обсягу («не більше 3 речень», «100 слів») змінюють результат генерації.</div><div class="q-hint">Вони дисциплінують структуру й лаконічність відповіді. Див. Правило 5.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">9.</span>Чому важливо перевіряти розуміння завдання ШІ перед виконанням?</div><div class="q-hint">Це запобігає витраті часу на відповідь не за задумом. Див. Правило 10.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">10.</span>Наведіть приклад комплексного промпту, що містить мінімум 5 правил промпт-інженірингу.</div><div class="q-hint">Скористайтесь конструктором у Частині 6 або промптом «7 рівнів» із Завдання 6.</div></div>
+      </div>
+
+      <div class="quiz-list" data-list="adv">
+        <div class="q-item"><div class="q-text"><span class="qnum">11.</span>Порівняйте, як ChatGPT, Gemini та Claude по-різному реагують на однаковий складний промпт.</div><div class="q-hint">Див. картки моделей у Частині 5 — кожна має власні сильні сторони та чутливості.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">12.</span>Розробіть власну стратегію промпт-інженірингу для конкретної креативної задачі.</div><div class="q-hint">Скомбінуйте роль + контекст + формат + обмеження + приклад із конструктора Частини 6.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">13.</span>Проаналізуйте етичні аспекти використання ШІ для генерації текстів у креативних галузях.</div><div class="q-hint">Розгляньте авторство, оригінальність, ризик дезінформації та переваги швидкості й доступності.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">14.</span>Створіть «базу вдалих промптів» для 5 різних типів креативних завдань.</div><div class="q-hint">Використайте практику Завдання 5, крок 7 як шаблон структури бази.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">15.</span>Сформулюйте 5 правил «золотого промпту» — універсальних для будь-якого генеративного ШІ.</div><div class="q-hint">Спирайтесь на підсумкову таблицю 10 правил у Довіднику нижче — оберіть 5 найуніверсальніших.</div></div>
+      </div>
+    </section>
+
+    <!-- REFERENCE -->
+    <section class="section" id="reference">
+      <div class="eyebrow">Довідкові матеріали</div>
+      <h2>Глосарій, підсумкові правила та критерії оцінювання</h2>
+
+      <h4 style="margin-top:8px;">Глосарій термінів</h4>
+      <div class="gloss">
+        <div class="gloss-item"><b>Токен</b><span>Мінімальна одиниця тексту (слово чи частина слова), яку модель прогнозує крок за кроком.</span></div>
+        <div class="gloss-item"><b>Авторегресійна генерація</b><span>Процес, коли модель передбачає кожен наступний токен на основі всього попереднього контексту.</span></div>
+        <div class="gloss-item"><b>Few-shot prompting</b><span>Надання ШІ кількох прикладів бажаного результату перед основним завданням.</span></div>
+        <div class="gloss-item"><b>Chain of Thought</b><span>Прийом, що просить модель міркувати покроково для складних завдань.</span></div>
+        <div class="gloss-item"><b>Рольове моделювання</b><span>Присвоєння ШІ конкретної ролі/професії для зміни стилю та глибини відповіді.</span></div>
+        <div class="gloss-item"><b>Ітеративний підхід</b><span>Покрокове покращення відповіді через послідовні уточнення в одному діалозі.</span></div>
+      </div>
+
+      <h4 style="margin-top:32px;">Підсумкові правила ефективного промпт-інженірингу</h4>
+      <table class="cmp">
+        <tr><th>№</th><th>Правило</th><th>Коротка суть</th></tr>
+        <tr><td>1</td><td><b>Конкретність</b></td><td>Чим точніший запит — тим кращий результат</td></tr>
+        <tr><td>2</td><td><b>Контекст</b></td><td>Завжди надавайте фонову інформацію</td></tr>
+        <tr><td>3</td><td><b>Роль</b></td><td>Призначайте ШІ конкретну роль</td></tr>
+        <tr><td>4</td><td><b>Приклади</b></td><td>Few-shot prompting підвищує якість</td></tr>
+        <tr><td>5</td><td><b>Обмеження</b></td><td>Вказуйте обсяг, формат, тон</td></tr>
+        <tr><td>6</td><td><b>Формат</b></td><td>Визначайте, як має виглядати відповідь</td></tr>
+        <tr><td>7</td><td><b>Ітерації</b></td><td>Тестуйте, покращуйте, зберігайте вдалі промпти</td></tr>
+        <tr><td>8</td><td><b>Покроковість</b></td><td>Для складних завдань — chain of thought</td></tr>
+        <tr><td>9</td><td><b>Баланс</b></td><td>Просіть про переваги й недоліки</td></tr>
+        <tr><td>10</td><td><b>Перевірка</b></td><td>Просіть підтвердити розуміння завдання</td></tr>
+      </table>
+
+      <h4 style="margin-top:32px;">Критерії оцінювання практичної роботи</h4>
+      <table class="cmp">
+        <tr><th>Критерій</th><th>Бали</th><th>Опис</th></tr>
+        <tr><td>Виконання всіх 6 завдань</td><td>30</td><td>Кожне завдання виконано повністю, збережено результати</td></tr>
+        <tr><td>Якість порівняльного аналізу</td><td>20</td><td>Висновки аргументовані, з конкретними прикладами</td></tr>
+        <tr><td>Креативність у формулюванні промптів</td><td>20</td><td>Промпти оригінальні, не шаблонні</td></tr>
+        <tr><td>Відповіді на контрольні питання</td><td>20</td><td>Повні, зрозумілі відповіді на всі рівні</td></tr>
+        <tr><td>Оформлення звіту</td><td>10</td><td>Структурований документ з ілюстраціями</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--ink-faint);margin-top:8px;">Максимальна оцінка: 100 балів</p>
+
+      <div class="quote-block">
+        <p>«Кожен, хто перестає вчитися, старіє — не важливо, в 20 або 80 років, — а будь-який інший, хто продовжує вчитися, залишається молодим. Найважливіше в житті — це зберегти мозок молодим.»</p>
+        <span>— Генрі Форд</span>
+      </div>
+    </section>
+
+    <footer>STEAM-HUB · Полтавський університет економіки і торгівлі · Інтерактивний посібник з теми «Загальні поняття. Генерація текстів. Промпт-інженіринг»</footer>
+  </main>
+</div>
+
+<script>
+/* ===== scrollspy ===== */
+const sections = document.querySelectorAll('.main .section');
+const links = document.querySelectorAll('#toc a');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const id = e.target.getAttribute('id');
+      const active = document.querySelector(`#toc a[href="#${id}"]`);
+      if(active) active.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -70% 0px'});
+sections.forEach(s=>io.observe(s));
+
+/* ===== hero token animation ===== */
+const toks = ["будильник",".","Ідеальний"," ","для"," ","ранкового"," ","ритуалу","."];
+const tokEl = document.getElementById('tokDemo');
+function playTokens(){
+  tokEl.innerHTML='';
+  toks.forEach((t,i)=>{
+    if(t.trim()===''&&t!==' ')return;
+    const span=document.createElement('span');
+    span.className='tf-tok';
+    span.textContent=t;
+    span.style.animationDelay=(i*0.28)+'s';
+    tokEl.appendChild(span);
+  });
+}
+playTokens();
+setInterval(playTokens, toks.length*280+2600);
+
+/* ===== rule accordion ===== */
+document.querySelectorAll('.rule-head').forEach(h=>{
+  h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+});
+document.querySelector('#rulesList .rule').classList.add('open');
+
+/* ===== task accordion ===== */
+document.querySelectorAll('.task-head').forEach(h=>{
+  h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+});
+document.querySelector('#tasksList .task').classList.add('open');
+
+/* ===== quiz tabs ===== */
+document.querySelectorAll('.quiz-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.quiz-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.quiz-list').forEach(l=>l.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`.quiz-list[data-list="${tab.dataset.tab}"]`).classList.add('active');
+  });
+});
+document.querySelectorAll('.q-item').forEach(q=>{
+  q.addEventListener('click',()=>q.classList.toggle('open'));
+});
+
+/* ===== universal prompt builder ===== */
+const bIds=['b-role','b-context','b-task','b-format','b-constraints','b-example'];
+function renderBuilder(){
+  const v = id=>document.getElementById(id).value.trim();
+  const role=v('b-role'), ctx=v('b-context'), task=v('b-task'), format=v('b-format'), constraints=v('b-constraints'), example=v('b-example');
+  let out = '';
+  out += `<span class="lbl">Ти — </span><span class="val">${role || '[роль/професія]'}</span>.\n\n`;
+  out += `<span class="lbl">Контекст: </span><span class="val">${ctx || '[опишіть ситуацію, аудиторію, мету]'}</span>.\n\n`;
+  out += `<span class="lbl">Завдання: </span><span class="val">${task || '[конкретна дія, яку має виконати ШІ]'}</span>.\n\n`;
+  out += `<span class="lbl">Формат: </span><span class="val">${format || '[як саме має виглядати відповідь]'}</span>.\n\n`;
+  out += `<span class="lbl">Обмеження: </span><span class="val">${constraints || '[обсяг, тон, що уникати]'}</span>.\n\n`;
+  if(example){ out += `<span class="lbl">Приклад: </span><span class="val">${example}</span>.\n\n`; }
+  out += `<span class="lbl">Підтвердь</span>, що зрозумів завдання, перш ніж виконувати.`;
+  document.getElementById('builderOut').innerHTML = out;
+}
+bIds.forEach(id=>document.getElementById(id).addEventListener('input',renderBuilder));
+renderBuilder();
+
+/* ===== simulator ===== */
+const simOptions = [
+  {key:'context', label:'Контекст (хто/чого/коли)', weight:1},
+  {key:'role', label:'Рольове моделювання', weight:1},
+  {key:'example', label:'Приклад (few-shot)', weight:1},
+  {key:'format', label:'Формат відповіді', weight:1},
+  {key:'constraints', label:'Обмеження обсягу', weight:1},
+  {key:'cot', label:'Покроковість (chain of thought)', weight:1},
+];
+const simState = {};
+const togglesWrap = document.getElementById('simToggles');
+simOptions.forEach(opt=>{
+  simState[opt.key]=false;
+  const row=document.createElement('label');
+  row.style.cssText='display:flex;align-items:center;gap:10px;font-size:13.5px;cursor:pointer;color:var(--ink-soft);';
+  row.innerHTML = `<input type="checkbox" data-key="${opt.key}" style="width:16px;height:16px;accent-color:var(--violet);"> ${opt.label}`;
+  togglesWrap.appendChild(row);
+});
+togglesWrap.querySelectorAll('input').forEach(inp=>{
+  inp.addEventListener('change',()=>{ simState[inp.dataset.key]=inp.checked; renderSim(); });
+});
+
+const scaleEl = document.getElementById('qualityScale');
+for(let i=0;i<6;i++){ const s=document.createElement('i'); scaleEl.appendChild(s); }
+
+const baseVague = "Тут можна написати щось про каву. Кава смачна, її люблять пити вранці. Спробуйте нашу каву.";
+function renderSim(){
+  const on = Object.values(simState).filter(Boolean).length;
+  const bars = scaleEl.querySelectorAll('i');
+  bars.forEach((b,i)=> b.classList.toggle('on', i<on));
+
+  const labels=['Дуже слабкий промпт','Слабкий промпт','Задовільний промпт','Добрий промпт','Дуже добрий промпт','Відмінний промпт','Ідеальний промпт'];
+  document.getElementById('qualityLabel').textContent = labels[on] || labels[0];
+
+  let text = "Опис для Instagram крафтової кав'ярні: ";
+  if(!on){
+    text = baseVague;
+  } else {
+    if(simState.role) text += "Як досвідчений копірайтер із фокусом на спешелті-каву, я пропоную: ";
+    text += "нова партія ефіопської кави з нотками чорниці й темного шоколаду — ";
+    if(simState.context) text += "ідеальна для тих, хто шукає теплий ранковий ритуал перед роботою. ";
+    if(simState.example) text += "У стилі: «Кава, яка змушує забути про будильник». ";
+    if(simState.cot) text += "Структура посту: 1) хук-питання 2) опис смаку 3) заклик до дії. ";
+    if(simState.constraints) text += "(3–4 речення, тон теплий і знайомий) ";
+    if(simState.format) text += "Формат: короткий підпис + 3 хештеги.";
+  }
+  document.getElementById('simResponse').textContent = text;
+}
+renderSim();
+
+/* ===== SVG MIND MAPS ===== */
+const svgNS = "http://www.w3.org/2000/svg";
+
+function makeSvg(width,height){
+  const svg = document.createElementNS(svgNS,'svg');
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  svg.setAttribute('width','100%');
+  svg.style.display='block';
+  svg.style.margin='0 auto';
+  return svg;
+}
+function line(svg,x1,y1,x2,y2,color){
+  const l=document.createElementNS(svgNS,'line');
+  l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+  l.setAttribute('stroke',color||'#DEDACB');l.setAttribute('stroke-width','2');
+  svg.appendChild(l); return l;
+}
+function node(svg,x,y,r,fill,stroke){
+  const c=document.createElementNS(svgNS,'circle');
+  c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',r);
+  c.setAttribute('fill',fill);if(stroke){c.setAttribute('stroke',stroke);c.setAttribute('stroke-width','2');}
+  svg.appendChild(c); return c;
+}
+function text(svg,x,y,str,opts={}){
+  const t=document.createElementNS(svgNS,'text');
+  t.setAttribute('x',x);t.setAttribute('y',y);
+  t.setAttribute('font-family',opts.mono?"'JetBrains Mono',monospace":"'Inter',sans-serif");
+  t.setAttribute('font-size',opts.size||13);
+  t.setAttribute('font-weight',opts.weight||500);
+  t.setAttribute('fill',opts.fill||'#20222E');
+  t.setAttribute('text-anchor',opts.anchor||'middle');
+  t.textContent=str;
+  svg.appendChild(t); return t;
+}
+function wrapText(svg,x,y,str,maxChars,opts={}){
+  const words=str.split(' ');let lines=[];let cur='';
+  words.forEach(w=>{
+    if((cur+' '+w).trim().length>maxChars){lines.push(cur.trim());cur=w;}
+    else cur=(cur+' '+w).trim();
+  });
+  lines.push(cur.trim());
+  lines.forEach((ln,i)=>text(svg,x,y+i*(opts.lh||14),ln,opts));
+}
+
+/* --- Hierarchy mind map (Частина 1) --- */
+(function(){
+  const svg = makeSvg(440,300);
+  const cx=220, cy=44;
+  node(svg,cx,cy,30,'#5B4FE0'); text(svg,cx,cy+4,'ШІ',{fill:'#fff',weight:700,size:14});
+  const items=[
+    {x:80,y:140,label:'Машинне навчання',color:'#EBE8FC',tc:'#3D33B0'},
+    {x:220,y:170,label:'Штучна нейронна мережа',color:'#DFF3EA',tc:'#1F9A78'},
+    {x:360,y:140,label:'Глибоке навчання',color:'#F8ECD9',tc:'#C98A2C'},
+  ];
+  items.forEach(it=>{
+    line(svg,cx,cy+26,it.x,it.y-24);
+    node(svg,it.x,it.y,26,it.color);
+    wrapText(svg,it.x,it.y+4,it.label,14,{size:11,weight:600,fill:it.tc,lh:12});
+  });
+  wrapText(svg,220,260,'Deep Learning — підмножина Machine Learning, що використовує багатошарові нейронні мережі',26,{size:11.5,fill:'#565A72',lh:15});
+  document.getElementById('hierarchySvg').appendChild(svg);
+})();
+
+/* --- Autoregressive flow (Частина 2) --- */
+(function(){
+  const svg = makeSvg(760,170);
+  const steps=['Промпт','Аналіз\nконтексту','Прогноз\nтокена','Додавання\nдо тексту','Повторення'];
+  const xs=[70,230,390,550,690];
+  const y=70;
+  steps.forEach((s,i)=>{
+    node(svg,xs[i],y,34,i===4?'#EBE8FC':'#DFF3EA');
+    const lines=s.split('\n');
+    lines.forEach((ln,j)=>text(svg,xs[i],y-4+j*13,ln,{size:11,weight:600,fill:i===4?'#3D33B0':'#1F9A78'}));
+    if(i<steps.length-1){
+      const arrow=document.createElementNS(svgNS,'line');
+      arrow.setAttribute('x1',xs[i]+36);arrow.setAttribute('y1',y);
+      arrow.setAttribute('x2',xs[i+1]-36);arrow.setAttribute('y2',y);
+      arrow.setAttribute('stroke','#B8B4E8');arrow.setAttribute('stroke-width','2');
+      arrow.setAttribute('marker-end','url(#arrow)');
+      svg.appendChild(arrow);
+    }
+  });
+  // loop arrow back to step 3
+  const path=document.createElementNS(svgNS,'path');
+  path.setAttribute('d',`M ${xs[4]} ${y+34} C ${xs[4]} ${y+90}, ${xs[2]} ${y+90}, ${xs[2]} ${y+34}`);
+  path.setAttribute('fill','none');path.setAttribute('stroke','#D8503F');path.setAttribute('stroke-width','2');
+  path.setAttribute('stroke-dasharray','4 4');
+  path.setAttribute('marker-end','url(#arrow2)');
+  svg.appendChild(path);
+  text(svg,(xs[2]+xs[4])/2,y+110,'цикл, поки не сформовано повну відповідь',{size:11,fill:'#D8503F'});
+
+  const defs=document.createElementNS(svgNS,'defs');
+  defs.innerHTML=`<marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#B8B4E8"/></marker>
+  <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#D8503F"/></marker>`;
+  svg.insertBefore(defs,svg.firstChild);
+  document.getElementById('autoregSvg').appendChild(svg);
+})();
+
+/* --- 8-step universal algorithm mind map (Частина 6) --- */
+(function(){
+  const svg = makeSvg(820,430);
+  const steps=[
+    'Визначте мету','Опишіть роль ШІ','Надайте контекст','Сформулюйте завдання',
+    'Вкажіть обмеження','Додайте приклади','Попросіть підтвердити','Проаналізуйте → ітерація'
+  ];
+  const cols=4, rowH=190, colW=200;
+  steps.forEach((s,i)=>{
+    const row=Math.floor(i/cols);
+    let col=i%cols;
+    if(row===1) col = cols-1-col; // snake layout
+    const x=90+col*colW, y=70+row*rowH;
+    node(svg,x,y,32,'#5B4FE0');
+    text(svg,x,y+5,String(i+1),{fill:'#fff',weight:700,size:14});
+    wrapText(svg,x,y+52,s,15,{size:12,weight:600,fill:'#20222E',lh:14});
+  });
+  // connecting arrows following snake order
+  const coords=[];
+  steps.forEach((s,i)=>{
+    const row=Math.floor(i/cols); let col=i%cols; if(row===1) col=cols-1-col;
+    coords.push([90+col*colW,70+row*rowH]);
+  });
+  for(let i=0;i<coords.length-1;i++){
+    const [x1,y1]=coords[i], [x2,y2]=coords[i+1];
+    const l=document.createElementNS(svgNS,'line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke','#C9C4F5');l.setAttribute('stroke-width','2');l.setAttribute('stroke-dasharray', i===3? '0':'0');
+    svg.insertBefore(l,svg.firstChild);
+  }
+  // loop back arrow from last to first
+  const path=document.createElementNS(svgNS,'path');
+  const [lx,ly]=coords[7],[fx,fy]=coords[0];
+  path.setAttribute('d',`M ${lx} ${ly+34} C ${lx-100} ${ly+90}, ${fx-60} ${fy-90}, ${fx} ${fy-34}`);
+  path.setAttribute('fill','none');path.setAttribute('stroke','#D8503F');path.setAttribute('stroke-width','2');
+  path.setAttribute('stroke-dasharray','4 4');
+  svg.appendChild(path);
+  document.getElementById('algoSvg').appendChild(svg);
+})();
+
+/* --- 7 levels strategy diagram (Завдання 6) --- */
+(function(){
+  const svg = makeSvg(760,300);
+  const levels=['Загальний запит','Контекст','Роль','Обмеження','Формат','Приклади','Перевірка розуміння'];
+  const startX=60, endX=700, y0=50, dy=32;
+  levels.forEach((lv,i)=>{
+    const y=y0+i*dy;
+    node(svg,startX,y,12,'#5B4FE0');
+    text(svg,startX+26,y+4,`Рівень ${i+1}`,{anchor:'start',size:11.5,weight:700,fill:'#3D33B0'});
+    text(svg,startX+96,y+4,lv,{anchor:'start',size:12,fill:'#565A72'});
+    if(i<levels.length-1) line(svg,startX,y+12,startX,y+dy-12,'#DEDACB');
+  });
+  document.getElementById('sevenLevelsSvg').appendChild(svg);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Промпт-інженіринг для генерації зображень</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F5EF;
+  --paper-2:#EFEBE0;
+  --ink:#20222E;
+  --ink-soft:#565A72;
+  --ink-faint:#8A8DA0;
+  --line:#DEDACB;
+  --violet:#5B4FE0;
+  --violet-deep:#3D33B0;
+  --violet-soft:#EBE8FC;
+  --mint:#1F9A78;
+  --mint-soft:#DFF3EA;
+  --coral:#D8503F;
+  --coral-soft:#FBE6E1;
+  --amber:#C98A2C;
+  --amber-soft:#F8ECD9;
+  --radius:18px;
+  --shadow: 0 1px 2px rgba(32,34,46,.04), 0 8px 24px -12px rgba(32,34,46,.12);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;}
+::selection{background:var(--violet-soft);color:var(--violet-deep);}
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;margin:0 0 .4em;color:var(--ink);}
+p{margin:0 0 1em;color:var(--ink-soft);}
+a{color:var(--violet);}
+.mono{font-family:'JetBrains Mono',monospace;}
+img,svg{max-width:100%;}
+
+.bg-grid{position:fixed;inset:0;z-index:-1;background-image:radial-gradient(circle at 1px 1px, rgba(91,79,224,0.07) 1.4px, transparent 1.4px);background-size:26px 26px;}
+
+.shell{display:flex;max-width:1400px;margin:0 auto;}
+.sidebar{width:264px;flex-shrink:0;position:sticky;top:0;height:100vh;padding:32px 18px 32px 28px;overflow-y:auto;border-right:1px solid var(--line);}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+.brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--violet),var(--violet-deep));display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand-mark svg{width:20px;height:20px;}
+.brand-text{font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;line-height:1.25;}
+.brand-text span{display:block;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;}
+
+nav.toc{display:flex;flex-direction:column;gap:2px;}
+nav.toc a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--ink-soft);text-decoration:none;transition:.15s;}
+nav.toc a .num{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-faint);width:20px;flex-shrink:0;}
+nav.toc a:hover{background:var(--paper-2);color:var(--ink);}
+nav.toc a.active{background:var(--violet-soft);color:var(--violet-deep);}
+nav.toc a.active .num{color:var(--violet-deep);}
+
+.main{flex:1;min-width:0;padding:0 0 80px;}
+.section{padding:64px 56px;border-bottom:1px solid var(--line);}
+.section:last-child{border-bottom:none;}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--violet);font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.eyebrow::before{content:'';width:16px;height:1px;background:var(--violet);}
+.section h2{font-size:32px;max-width:760px;}
+.section > .lead{max-width:640px;font-size:16px;}
+
+.hero{padding:72px 56px 56px;position:relative;overflow:hidden;}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet-deep);background:var(--violet-soft);display:inline-flex;padding:6px 12px;border-radius:100px;letter-spacing:.03em;margin-bottom:20px;font-weight:500;}
+.hero h1{font-size:42px;line-height:1.12;max-width:620px;letter-spacing:-.01em;}
+.hero h1 em{font-style:italic;color:var(--violet);}
+.hero .lead{font-size:17px;max-width:520px;margin-top:14px;}
+.hero-stats{display:flex;gap:28px;margin-top:32px;flex-wrap:wrap;}
+.hstat b{font-family:'Fraunces',serif;font-size:26px;display:block;color:var(--ink);}
+.hstat span{font-size:12.5px;color:var(--ink-faint);}
+
+.diffusion-demo{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);}
+.diffusion-demo .tf-title{font-size:12px;color:var(--ink-faint);font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+
+.mindmap-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-top:24px;}
+.mindmap-wrap .mm-caption{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink-faint);text-align:center;margin-top:10px;}
+
+table.cmp{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;}
+table.cmp th{text-align:left;font-family:'Fraunces',serif;font-weight:600;font-size:13.5px;padding:10px 14px;background:var(--paper-2);color:var(--ink);}
+table.cmp td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft);}
+table.cmp tr:last-child td{border-bottom:none;}
+.tag-bad, .tag-good{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:100px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+.tag-bad{background:var(--coral-soft);color:var(--coral);}
+.tag-good{background:var(--mint-soft);color:var(--mint);}
+.example-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;}
+.ex-box{border-radius:12px;padding:14px 16px;font-size:13.5px;}
+.ex-bad{background:var(--coral-soft);}
+.ex-good{background:var(--mint-soft);}
+.ex-box p{margin:0;color:var(--ink);}
+.tip-box{margin-top:12px;background:var(--paper-2);border-radius:12px;padding:14px 16px;font-size:13.5px;border-left:3px solid var(--violet);}
+.tip-box b{color:var(--violet-deep);}
+
+.tool-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;}
+.tool-card .t-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.tool-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.tool-card h4{font-size:15px;margin:0;}
+.tool-card ul{padding-left:18px;font-size:12.8px;color:var(--ink-soft);margin:0;}
+.tool-card li{margin-bottom:3px;}
+
+.prompt-block{background:var(--ink);color:#F2F1FA;border-radius:14px;padding:18px 20px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:14px 0;white-space:pre-wrap;position:relative;}
+.prompt-block::before{content:'PROMPT';position:absolute;top:10px;right:16px;font-size:9.5px;letter-spacing:.1em;color:#7A76A8;}
+.prompt-block.negative::before{content:'NEGATIVE';}
+.prompt-block .role{color:#9C8CFF;}
+.prompt-block .hl{color:#7FE3C0;}
+.prompt-block.negative{background:#2E1F1D;}
+.prompt-block.negative .hl{color:#F0A99C;}
+
+.rule{background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden;}
+.rule-head{display:flex;align-items:center;gap:16px;padding:18px 22px;cursor:pointer;user-select:none;}
+.rule-num{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--violet);background:var(--violet-soft);width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rule-head h4{margin:0;font-size:16.5px;flex:1;}
+.rule-head .chev{transition:.2s;color:var(--ink-faint);flex-shrink:0;}
+.rule.open .rule-head .chev{transform:rotate(180deg);}
+.rule-body{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.rule.open .rule-body{max-height:2600px;}
+.rule-body-inner{padding:0 22px 22px;}
+.rule-problem{font-size:14px;color:var(--ink-faint);margin-bottom:14px;font-style:italic;}
+
+.model-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;}
+.model-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;}
+.model-card .m-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.model-dot{width:12px;height:12px;border-radius:50%;}
+.model-card h4{font-size:15.5px;margin:0;}
+.model-card ul{padding-left:18px;font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;}
+.model-card li{margin-bottom:4px;}
+
+.ethic-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;}
+.ethic-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;}
+.ethic-card h4{font-size:14.5px;color:var(--violet-deep);margin-bottom:8px;}
+.ethic-card ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-soft);}
+.ethic-card li{margin-bottom:5px;}
+
+.template-cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px;}
+.template-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;}
+.template-card h4{font-size:15px;color:var(--violet-deep);margin-bottom:6px;}
+.template-formula{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--violet-soft);color:var(--violet-deep);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+
+.task{background:#fff;border:1px solid var(--line);border-radius:20px;margin-bottom:22px;overflow:hidden;}
+.task-head{display:flex;align-items:center;gap:16px;padding:20px 24px;background:var(--paper-2);cursor:pointer;}
+.task-num{font-family:'Fraunces',serif;font-weight:600;font-size:20px;color:var(--violet-deep);width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--line);}
+.task-head h3{margin:0;font-size:17.5px;flex:1;}
+.task-head .chev{color:var(--ink-faint);transition:.2s;flex-shrink:0;}
+.task.open .task-head .chev{transform:rotate(180deg);}
+.task-body{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+.task.open .task-body{max-height:4200px;}
+.task-body-inner{padding:24px;}
+.task-goal{font-size:14px;background:var(--violet-soft);color:var(--violet-deep);border-radius:12px;padding:12px 16px;margin-bottom:20px;}
+.steps{list-style:none;margin:0;padding:0;}
+.steps li{display:flex;gap:16px;padding-bottom:20px;position:relative;}
+.steps li::before{content:'';position:absolute;left:15px;top:34px;bottom:0;width:2px;background:var(--line);}
+.steps li:last-child::before{display:none;}
+.step-icon{width:32px;height:32px;border-radius:9px;background:var(--mint-soft);color:var(--mint);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;}
+.step-text{flex:1;font-size:14.5px;padding-top:4px;}
+.step-text b{color:var(--ink);}
+.step-text a{color:var(--violet);}
+
+/* scene simulator */
+.sim-wrap{display:grid;grid-template-columns:1fr 1.15fr;gap:26px;margin-top:24px;align-items:start;}
+.sim-controls{display:flex;flex-direction:column;gap:16px;}
+.sim-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
+.sim-chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.sim-chip{padding:7px 13px;border-radius:100px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+.sim-chip.active{background:var(--violet);color:#fff;border-color:var(--violet);}
+.sim-field input[type=range]{width:100%;accent-color:var(--violet);}
+.sim-range-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet-deep);font-weight:700;}
+.sim-toggle-row{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-soft);}
+.scene-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);}
+.sim-prompt-out{margin-top:14px;background:var(--ink);color:#F2F1FA;border-radius:12px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;}
+.gauge-row{display:flex;gap:18px;margin-top:14px;}
+.gauge{flex:1;}
+.gauge span{font-size:11px;color:var(--ink-faint);display:block;margin-bottom:4px;}
+.gauge-bar{height:8px;border-radius:5px;background:var(--paper-2);overflow:hidden;}
+.gauge-bar i{display:block;height:100%;background:var(--violet);border-radius:5px;transition:.25s;}
+
+.quiz-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.quiz-tab{padding:8px 16px;border-radius:100px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+.quiz-tab.active{background:var(--violet);color:#fff;border-color:var(--violet);}
+.quiz-list{display:none;flex-direction:column;gap:10px;}
+.quiz-list.active{display:flex;}
+.q-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;}
+.q-item .q-text{display:flex;gap:10px;font-size:14.5px;color:var(--ink);}
+.q-item .q-text .qnum{font-family:'JetBrains Mono',monospace;color:var(--violet);font-weight:700;flex-shrink:0;}
+.q-hint{max-height:0;overflow:hidden;transition:.25s;font-size:13.5px;color:var(--ink-soft);margin-top:0;padding-left:26px;}
+.q-item.open .q-hint{max-height:220px;margin-top:10px;}
+
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:20px;}
+.gloss-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+.gloss-item b{display:block;font-family:'Fraunces',serif;color:var(--violet-deep);margin-bottom:4px;font-size:15px;}
+.gloss-item span{font-size:13.5px;color:var(--ink-soft);}
+
+.quote-block{margin-top:40px;padding:28px 32px;border-left:3px solid var(--violet);background:var(--violet-soft);border-radius:0 16px 16px 0;}
+.quote-block p{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--ink);margin-bottom:6px;}
+.quote-block span{font-size:13px;color:var(--violet-deep);font-weight:600;}
+
+footer{text-align:center;padding:40px 20px;font-size:12.5px;color:var(--ink-faint);}
+
+@media (max-width:980px){
+  .sidebar{display:none;}
+  .section{padding:44px 22px;}
+  .hero{padding:44px 22px;}
+  .hero-grid, .grid-2, .grid-3, .grid-4, .model-cards, .ethic-cards, .template-cards, .example-pair, .gloss, .sim-wrap{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#fff" stroke-width="1.4"/><circle cx="9" cy="9.5" r="1.6" fill="#fff"/><path d="M5 16L9.5 11.5L13 15L16 12L19 15" stroke="#fff" stroke-width="1.4" fill="none"/></svg>
+      </div>
+      <div class="brand-text">STEAM-HUB<span>Тема 3 · Image Generation</span></div>
+    </div>
+    <nav class="toc" id="toc">
+      <a href="#hero"><span class="num">00</span>Вступ</a>
+      <a href="#part1"><span class="num">01</span>Генерація зображень</a>
+      <a href="#part2"><span class="num">02</span>Огляд програм</a>
+      <a href="#part3"><span class="num">03</span>Промпт для зображень</a>
+      <a href="#rules"><span class="num">04</span>10 правил</a>
+      <a href="#models"><span class="num">05</span>Рекомендації по моделях</a>
+      <a href="#templates"><span class="num">06</span>Шаблони та етика</a>
+      <a href="#practice"><span class="num">07</span>Практичні завдання</a>
+      <a href="#simulator"><span class="num">08</span>Симулятор сцени</a>
+      <a href="#questions"><span class="num">09</span>Контрольні питання</a>
+      <a href="#reference"><span class="num">10</span>Довідник і критерії</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <!-- HERO -->
+    <section class="section hero" id="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-eyebrow">STEAM-HUB · Тема 3</div>
+          <h1>Промпт-інженіринг для <em>генерації зображень</em> — від шуму до візуального шедевру</h1>
+          <p class="lead">Інтерактивний посібник: як працюють дифузійні моделі, огляд 7 інструментів (Gencraft, Stable Diffusion, Krea AI, Kling, Leonardo AI, ObjectRemover, Fotor), 10 правил візуального промпту, симулятор сцени та контрольні питання.</p>
+          <div class="hero-stats">
+            <div class="hstat"><b>10</b><span>правил візуального промпту</span></div>
+            <div class="hstat"><b>7</b><span>інструментів генерації</span></div>
+            <div class="hstat"><b>6</b><span>практичних завдань</span></div>
+            <div class="hstat"><b>15</b><span>контрольних питань</span></div>
+          </div>
+        </div>
+        <div class="diffusion-demo">
+          <div class="tf-title">// дифузійна модель — шум поступово перетворюється на зображення</div>
+          <div id="diffusionAnim"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PART 1 -->
+    <section class="section" id="part1">
+      <div class="eyebrow">Частина 1</div>
+      <h2>Загальні поняття генерації зображень</h2>
+      <p class="lead"><b>Генерація зображень за допомогою ШІ</b> — автоматичне створення візуального контенту (фото, ілюстрацій, 3D-рендерів) на основі текстового промпту. Моделі навчені на мільярдах пар «текст — зображення».</p>
+
+      <div class="grid-2" style="margin-top:22px;">
+        <div class="card">
+          <h4 style="font-size:15px;color:var(--violet-deep);">Три технології, на яких це працює</h4>
+          <ul style="padding-left:18px;font-size:14px;color:var(--ink-soft);margin:0;">
+            <li style="margin-bottom:10px;"><b style="color:var(--ink);">Дифузійні моделі</b> — поступово перетворюють шум на структуроване зображення, керуючись текстом</li>
+            <li style="margin-bottom:10px;"><b style="color:var(--ink);">Трансформери з увагою</b> — пов'язують слова промпту з візуальними елементами, точно розміщуючи об'єкти</li>
+            <li><b style="color:var(--ink);">Латентний простір</b> — модель працює зі стисненим математичним представленням, а не з пікселями напряму — швидше й деталізованіше</li>
+          </ul>
+        </div>
+        <div class="mindmap-wrap" style="margin-top:0;">
+          <div id="diffusionStepsSvg"></div>
+          <div class="mm-caption">Крок за кроком: від випадкового шуму до фінального зображення, кероване промптом</div>
+        </div>
+      </div>
+
+      <h4 style="margin-top:32px;font-size:16px;">Текст vs зображення: у чому різниця промпту</h4>
+      <table class="cmp">
+        <tr><th>Параметр</th><th>Генерація тексту</th><th>Генерація зображень</th></tr>
+        <tr><td>Вихід</td><td>Послідовність слів</td><td>Матриця пікселів</td></tr>
+        <tr><td>Промпт</td><td>Опис завдання, контексту, формату</td><td>Опис візуальних елементів, стилю, композиції</td></tr>
+        <tr><td>Контроль</td><td>Можна уточнювати у діалозі</td><td>Потребує точного промпту з першого разу</td></tr>
+        <tr><td>Ітерації</td><td>Легко коригувати текст</td><td>Потребує нової генерації з уточненим промптом</td></tr>
+        <tr><td>Деталізація</td><td>Чим більше слів — тим краще</td><td>Важливий порядок слів, вага кожного терміна</td></tr>
+      </table>
+    </section>
+
+    <!-- PART 2 -->
+    <section class="section" id="part2">
+      <div class="eyebrow">Частина 2</div>
+      <h2>Огляд програм для генерації зображень</h2>
+      <p class="lead">Сім інструментів із різними сильними сторонами — від простого текст-у-фото до професійного контролю композиції.</p>
+
+      <div class="grid-4" style="margin-top:22px;">
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#5B4FE0;"></div><h4>Gencraft</h4></div><ul><li>Інтуїтивний інтерфейс</li><li>Стилі: фото, аніме, 3D</li><li>Висока роздільність</li><li>Безкоштовна база</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#1F9A78;"></div><h4>Stable Diffusion</h4></div><ul><li>Open-source, безкоштовна</li><li>Fine-tuning під стилі</li><li>LoRA, checkpoints</li><li>Потребує GPU</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#C98A2C;"></div><h4>Krea AI</h4></div><ul><li>Генерація в реальному часі</li><li>Ескіз → фінал</li><li>Швидке прототипування</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#D8503F;"></div><h4>Kling</h4></div><ul><li>Зображення + відео</li><li>Складні композиції</li><li>Конкурент Midjourney</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#5B4FE0;"></div><h4>Leonardo AI</h4></div><ul><li>Фокус на ігрову індустрію</li><li>Game assets, персонажі</li><li>Анімація персонажів</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#1F9A78;"></div><h4>ObjectRemover</h4></div><ul><li>Видалення об'єктів</li><li>Inpainting</li><li>Простий інтерфейс</li></ul></div>
+        <div class="tool-card"><div class="t-head"><div class="tool-dot" style="background:#C98A2C;"></div><h4>Fotor</h4></div><ul><li>ШІ-генерація + редагування</li><li>Outpainting</li><li>Заміна фону</li></ul></div>
+      </div>
+    </section>
+
+    <!-- PART 3 -->
+    <section class="section" id="part3">
+      <div class="eyebrow">Частина 3</div>
+      <h2>Промпт-інженіринг для генерації зображень</h2>
+      <p class="lead">Промпт для зображення — не просто опис, а <b>візуальний сценарій</b>: що зображено, де розташоване, як виглядає і якою технікою виконано.</p>
+      <div class="tip-box" style="max-width:640px;"><b>Ключова ідея:</b> порядок слів має значення — слова на початку промпту отримують більшу «вагу» для моделі.</div>
+
+      <div class="mindmap-wrap">
+        <div id="formulaSvg"></div>
+        <div class="mm-caption">Формула ефективного промпту для зображення</div>
+      </div>
+    </section>
+
+    <!-- RULES -->
+    <section class="section" id="rules">
+      <div class="eyebrow">Частина 4</div>
+      <h2>10 правил промпт-інженірингу для зображень</h2>
+      <p class="lead">Кожне правило розкриває один аспект візуального промпту — від структури до технічних параметрів генерації.</p>
+
+      <div style="margin-top:24px;" id="rulesList">
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">01</div><h4>Структуруйте промпт за формулою «Що — Де — Як»</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Без структури промпт перетворюється на хаотичний набір слів.</p>
+            <div class="example-pair">
+              <div class="ex-box ex-bad"><span class="tag-bad">✕ Поганий</span><p>«Кіт»</p></div>
+              <div class="ex-box ex-good"><span class="tag-good">✓ Хороший</span><p>«Фотореалістичний рудий кіт сидить на підвіконні старого львівського будинку, м'яке вечірнє сонце, Canon EOS R5, 85mm, f/1.8, теплі тони, 8K»</p></div>
+            </div>
+            <div class="tip-box"><b>Gencraft:</b> додайте «photorealistic» або «digital art». <b>Stable Diffusion:</b> trigger words + негативні промпти. <b>Krea AI:</b> починайте просто, додавайте деталі поступово.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">02</div><h4>Вказуйте художній стиль та техніку</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Без стилю ШІ обирає найпоширеніший варіант, що може не відповідати задумці.</p>
+            <table class="cmp">
+              <tr><th>Стиль</th><th>Ключові слова</th></tr>
+              <tr><td>Фотореалізм</td><td>photorealistic, DSLR, 8K, ultra-detailed, RAW photo</td></tr>
+              <tr><td>Олійний живопис</td><td>oil painting, impasto, Renaissance style, brush strokes</td></tr>
+              <tr><td>Акварель</td><td>watercolor, wet-on-wet, soft edges, transparent layers</td></tr>
+              <tr><td>Аніме/манга</td><td>anime style, Studio Ghibli, cel-shaded</td></tr>
+              <tr><td>3D-рендер</td><td>3D render, octane render, blender, volumetric lighting</td></tr>
+              <tr><td>Піксель-арт</td><td>pixel art, 8-bit, 16-bit, retro game style</td></tr>
+              <tr><td>Концепт-арт</td><td>concept art, digital painting, matte painting</td></tr>
+              <tr><td>Мінімалізм</td><td>minimalist, flat design, geometric shapes</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">03</div><h4>Описуйте освітлення та атмосферу</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Освітлення — ключовий елемент настрою зображення.</p>
+            <table class="cmp">
+              <tr><th>Тип освітлення</th><th>Ключові слова</th></tr>
+              <tr><td>М'яке/розсіяне</td><td>soft lighting, diffused light, overcast</td></tr>
+              <tr><td>Драматичне</td><td>dramatic lighting, chiaroscuro, high contrast, cinematic</td></tr>
+              <tr><td>Золотий час</td><td>golden hour, sunset glow, warm backlight, rim light</td></tr>
+              <tr><td>Нічне</td><td>night scene, moonlight, neon lights, starry sky</td></tr>
+              <tr><td>Студійне</td><td>studio lighting, softbox, key light, fill light</td></tr>
+              <tr><td>Природне</td><td>natural light, window light, dappled sunlight</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">04</div><h4>Вказуйте композицію та перспективу</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Композиція визначає, як око глядача рухається по зображенню.</p>
+            <table class="cmp">
+              <tr><th>Елемент</th><th>Ключові слова</th></tr>
+              <tr><td>Ракурс</td><td>aerial view, drone shot, eye-level, low angle</td></tr>
+              <tr><td>План</td><td>close-up, medium shot, wide shot, full body</td></tr>
+              <tr><td>Перспектива</td><td>one-point perspective, fisheye, isometric</td></tr>
+              <tr><td>Правило третин</td><td>rule of thirds, golden ratio, symmetrical</td></tr>
+              <tr><td>Глибина</td><td>shallow depth of field, deep focus, bokeh</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">05</div><h4>Використовуйте негативні промпти</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem"><b>Негативний промпт</b> — опис того, чого НЕ повинно бути на зображенні. Особливо важливий для Stable Diffusion.</p>
+            <div class="prompt-block negative">(worst quality, low quality:1.4), (bad anatomy:1.2), <span class="hl">extra limb, missing limb</span>, blurry, watermark, text, cartoon, 3d render, painting</div>
+            <div class="tip-box"><b>Вагові коефіцієнти:</b> (deformed:1.3) означає вагу 1.3 замість стандартної 1.0 — модель сильніше уникатиме цього.</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">06</div><h4>Вказуйте технічні параметри «камери»</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">Генеративні моделі «розуміють» фотографічну термінологію.</p>
+            <table class="cmp">
+              <tr><th>Параметр</th><th>Ключові слова</th><th>Ефект</th></tr>
+              <tr><td>Об'єктив</td><td>35mm, 50mm, 85mm, 135mm</td><td>Перспектива, стиснення простору</td></tr>
+              <tr><td>Діафрагма</td><td>f/1.4, f/2.8, f/8, f/16</td><td>Глибина різкості (боке vs все різко)</td></tr>
+              <tr><td>ISO</td><td>ISO 100, ISO 3200, ISO 6400</td><td>Зернистість, шум</td></tr>
+              <tr><td>Плівка</td><td>Kodak Portra 400, Fujifilm Velvia</td><td>Колірна гама, контраст</td></tr>
+              <tr><td>Камера</td><td>Canon EOS R5, Sony A7IV, Leica M10</td><td>Характер кольоропередачі</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">07</div><h4>Експериментуйте з вагою слів</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem">У Stable Diffusion / ComfyUI можна керувати «вагою» кожного слова у промпті.</p>
+            <table class="cmp">
+              <tr><th>Синтаксис</th><th>Ефект</th></tr>
+              <tr><td>(слово:1.5)</td><td>Збільшує вагу слова на 50%</td></tr>
+              <tr><td>(слово:0.8)</td><td>Зменшує вагу слова на 20%</td></tr>
+              <tr><td>((слово))</td><td>Подвійне збільшення (≈1.21)</td></tr>
+              <tr><td>[слово]</td><td>Зменшення ваги</td></tr>
+            </table>
+            <div class="prompt-block">(фотореалістичний портрет:1.3) жінки, (вишиванка:1.2) з традиційним орнаментом, (висока деталізація:1.4), <span class="hl">[розмитий фон:0.7]</span>, світло студійне, Canon EOS R5, 85mm</div>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">08</div><h4>Використовуйте seed та параметри генерації</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem"><b>Seed</b> — початкове число для генерації шуму. Однаковий seed + промпт = однакове зображення.</p>
+            <table class="cmp">
+              <tr><th>Параметр</th><th>Опис</th><th>Рекомендація</th></tr>
+              <tr><td>Seed</td><td>Число для відтворення результату</td><td>Запишіть seed вдалого зображення</td></tr>
+              <tr><td>CFG Scale</td><td>Наскільки сильно промпт впливає</td><td>7–9 оптимально; 10–15 сильно; 3–6 творчо</td></tr>
+              <tr><td>Steps</td><td>Кількість кроків дифузії</td><td>20–30 баланс; 50+ максимальна якість</td></tr>
+              <tr><td>Sampler</td><td>Алгоритм генерації</td><td>DPM++ 2M Karras — найкращий баланс</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">09</div><h4>Inpainting та outpainting для редагування</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem"><b>Inpainting</b> — заміна частини зображення. <b>Outpainting</b> — розширення за межі рамки.</p>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">ObjectRemover: завантажте фото → виділіть об'єкт → «Remove» → ШІ заповнює ділянку контекстом.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Fotor: завантажте зображення → «AI Expand» → вкажіть напрямок розширення → ШІ дорисовує стиль.</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="rule">
+          <div class="rule-head"><div class="rule-num">10</div><h4>ControlNet для точного контролю</h4><div class="chev">⌄</div></div>
+          <div class="rule-body"><div class="rule-body-inner">
+            <p class="rule-problem"><b>ControlNet</b> — розширення Stable Diffusion, що керує композицією/позою/глибиною через зображення-зразки.</p>
+            <table class="cmp">
+              <tr><th>Тип</th><th>Контроль</th></tr>
+              <tr><td>Canny / Lineart</td><td>Контури, лінії малюнка</td></tr>
+              <tr><td>OpenPose</td><td>Поза людського тіла</td></tr>
+              <tr><td>Depth</td><td>Карта глибини сцени</td></tr>
+              <tr><td>Scribble</td><td>Ескіз → фінальне зображення</td></tr>
+              <tr><td>IP-Adapter</td><td>Копіювання стилю з референсу</td></tr>
+            </table>
+            <div class="mindmap-wrap" style="margin-top:16px;">
+              <div id="controlnetSvg"></div>
+            </div>
+          </div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- MODELS -->
+    <section class="section" id="models">
+      <div class="eyebrow">Частина 5</div>
+      <h2>Специфічні рекомендації для генераторів</h2>
+      <div class="model-cards">
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#5B4FE0;"></div><h4>Gencraft</h4></div>
+          <ul><li>Простий інтерфейс, готові стилі</li><li>Починайте зі стилю: «фото», «3D», «аніме»</li><li>Англійська мова дає кращі результати</li></ul>
+          <div class="prompt-block" style="margin:0;font-size:11.5px;">Photo of a cozy Ukrainian village house in winter, snow-covered roof, smoke from chimney, golden hour, 8K, photorealistic</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#1F9A78;"></div><h4>Stable Diffusion</h4></div>
+          <ul><li>Негативний промпт обов'язковий</li><li>CFG Scale 7–9 для початку</li><li>Зберігайте seed вдалих результатів</li></ul>
+          <div class="prompt-block" style="margin:0;font-size:11.5px;">(masterpiece, best quality:1.4), portrait of a Ukrainian woman, vyshyvanka, soft studio lighting, Canon EOS R5, 85mm, 8K</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#C98A2C;"></div><h4>Krea AI</h4></div>
+          <ul><li>Починайте просто, спостерігайте</li><li>Додавайте деталі поступово</li><li>Малювання ескізів для композиції</li></ul>
+          <div class="prompt-block" style="margin:0;font-size:11.5px;">Waterfall in Carpathian mountains, Yaremche, misty atmosphere, long exposure, photorealistic</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#D8503F;"></div><h4>Kling</h4></div>
+          <ul><li>Детальні описи освітлення й атмосфери</li><li>Кінематографічні терміни</li><li>Для відео — опис руху і динаміки</li></ul>
+          <div class="prompt-block" style="margin:0;font-size:11.5px;">Cinematic poster, symphony orchestra concert, volumetric lighting, rich colors, artstation trending</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#5B4FE0;"></div><h4>Leonardo AI</h4></div>
+          <ul><li>Оберіть модель: DreamShaper / RPG</li><li>Термінологія концепт-арту</li><li>«artstation», «trending» підвищують якість</li></ul>
+          <div class="prompt-block" style="margin:0;font-size:11.5px;">Fantasy character design, Little Red Riding Hood as cyberpunk hacker, concept art style, 4K</div>
+        </div>
+        <div class="model-card">
+          <div class="m-head"><div class="model-dot" style="background:#1F9A78;"></div><h4>Fotor</h4></div>
+          <ul><li>Швидка генерація фонів</li><li>AI Replace — заміна об'єктів</li><li>AI Expand — зміна формату зображення</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEMPLATES + ETHICS -->
+    <section class="section" id="templates">
+      <div class="eyebrow">Частина 6 · Частина 7</div>
+      <h2>Практичні шаблони промптів та етичні аспекти</h2>
+
+      <h4 style="margin-top:8px;">Етика та правові питання</h4>
+      <div class="ethic-cards">
+        <div class="ethic-card"><h4>© Авторське право</h4><ul><li>Згенеровані зображення зазвичай не мають традиційного авторського права</li><li>Промпт як творчий текст може бути захищений</li><li>Комерційне використання — перевіряйте умови сервісу</li></ul></div>
+        <div class="ethic-card"><h4>⚖ Біаси та стереотипи</h4><ul><li>Моделі можуть відтворювати упередження з даних навчання</li><li>Критично оцінюйте згенероване</li><li>Використовуйте промпти для диверсифікації</li></ul></div>
+        <div class="ethic-card"><h4>⚠ Deepfake та маніпуляції</h4><ul><li>Технології можуть створювати дезінформацію</li><li>Відповідальність — на користувачі</li><li>Перевіряйте контекст використання</li></ul></div>
+      </div>
+
+      <h4 style="margin-top:32px;">4 практичні шаблони</h4>
+      <div class="template-cards">
+        <div class="template-card">
+          <h4>Шаблон 1: Портрет</h4>
+          <div class="template-formula">[фотореалістичний] портрет [суб'єкт], [вік/зовнішність], [одяг], [поза/емоція], [фон], [освітлення], [камера], [якість]</div>
+          <p style="font-size:13px;margin:0;">«Фотореалістичний портрет молодої української жінки, 25 років, у вишиванці, спокійна усмішка, старовинна хата, м'яке вечірнє світло, Canon EOS R5, 85mm f/1.4, 8K»</p>
+        </div>
+        <div class="template-card">
+          <h4>Шаблон 2: Пейзаж</h4>
+          <div class="template-formula">[тип пейзажу], [локація], [пора року/час доби], [погода/атмосфера], [освітлення], [ракурс], [стиль], [якість]</div>
+          <p style="font-size:13px;margin:0;">«Гірський пейзаж Карпат восени, золоті ліси, ранковий туман, дрон, ширококутний об'єктив, HDR, 4K»</p>
+        </div>
+        <div class="template-card">
+          <h4>Шаблон 3: Продуктова фотографія</h4>
+          <div class="template-formula">[продукт], [матеріал/текстура], [подача], [фон], [освітлення], [кут зйомки], [атмосфера], [якість]</div>
+          <p style="font-size:13px;margin:0;">«Крафтова керамічна чашка, матова глазур, мінімалізм, мармуровий фон, м'яке студійне світло зліва, вид зверху 45°, 8K»</p>
+        </div>
+        <div class="template-card">
+          <h4>Шаблон 4: Концепт-арт</h4>
+          <div class="template-formula">[концепт-арт], [суб'єкт/сцена], [стиль/референс], [освітлення/атмосфера], [деталі], [формат], [якість]</div>
+          <p style="font-size:13px;margin:0;">«Концепт-арт футуристичного Києва 2150, неоготичні хмарочоси, кіберпанк у дусі Blade Runner, 4K, artstation trending»</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRACTICE -->
+    <section class="section" id="practice">
+      <div class="eyebrow">Практична частина</div>
+      <h2>6 практичних завдань з покроковими інструкціями</h2>
+      <p class="lead">Мета: опанувати інструменти генерації зображень і навчитись формулювати ефективні візуальні промпти. Потрібно: інтернет, браузер, акаунти на Gencraft, Krea AI, Kling, Leonardo AI, ObjectRemover, Fotor.</p>
+
+      <div id="tasksList" style="margin-top:24px;">
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">1</div><h3>Gencraft — генерація пейзажу</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Навчитися створювати детальні пейзажні зображення та розуміти структуру візуального промпту.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Відкрийте <a href="https://gencraft.com" target="_blank">gencraft.com</a> і зареєструйтесь (Google/Apple).</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Ознайомтесь з еталонним промптом про бухту В'єтнаму з карстовими скелями та дерев'яною джонкою.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Проаналізуйте структуру: суб'єкт, фон, деталі, кольори, атмосфера, якість (таблиця нижче).</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Введіть промпт, оберіть стиль <b>«Photo»</b>.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Натисніть «Generate», зачекайте 5–15 секунд.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Збережіть результат (Download).</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Приберіть 1–2 елементи з промпту (напр. «помаранчево-золоті вітрила») і згенеруйте знову.</div></li>
+              <li><div class="step-icon">8</div><div class="step-text">Порівняйте: як змінилась композиція, колірна гама, атмосфера?</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Висновок: які слова мають найбільшу «вагу» для фінального результату?</div></li>
+            </ul>
+            <table class="cmp">
+              <tr><th>Елемент</th><th>Що описує</th><th>Приклад із промпту</th></tr>
+              <tr><td>Суб'єкт</td><td>Головний об'єкт</td><td>Бухта В'єтнаму, джонка</td></tr>
+              <tr><td>Фон</td><td>Навколишнє середовище</td><td>Небо, хмари, вода, острови</td></tr>
+              <tr><td>Деталі</td><td>Специфічні елементи</td><td>Карстові утворення, рослинність</td></tr>
+              <tr><td>Кольори</td><td>Колірна палітра</td><td>Бірюзовий, зелений, помаранчевий</td></tr>
+              <tr><td>Атмосфера</td><td>Настрій зображення</td><td>Тропічний рай, сонячний день</td></tr>
+            </table>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">2</div><h3>Stable Diffusion — порівняння моделей</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Порівняти результати того самого промпту в різних системах, опанувати параметри Stable Diffusion.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Той самий промпт із Завдання 1 — тепер у <a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui" target="_blank">AUTOMATIC1111 WebUI</a> або <a href="https://leonardo.ai" target="_blank">Leonardo AI</a> / <a href="https://civitai.com" target="_blank">Civitai</a>.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Налаштуйте параметри: CFG Scale 7–9, Steps 25–30, Sampler DPM++ 2M Karras, Resolution 512×768.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Додайте негативний промпт (worst quality, bad anatomy, blurry, watermark, cartoon…).</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Згенеруйте зображення і збережіть.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Заповніть таблицю: час генерації, реалізм деталей, точність до промпту, палітра, зручність, налаштування.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Висновок (5–7 речень): для яких задач краще Gencraft, а для яких Stable Diffusion?</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">3</div><h3>Krea AI — генерація в реальному часі</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Опанувати генерацію в реальному часі, навчитись використовувати текстовий ШІ для створення візуальних промптів.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text"><b>Етап 1:</b> у ChatGPT/Gemini/Claude попросіть детальний опис водоспаду «Пробій» у Яремче для генерації зображення.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Скопіюйте готовий промпт.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text"><b>Етап 2:</b> перейдіть на <a href="https://www.krea.ai" target="_blank">krea.ai</a> і зареєструйтесь.</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Введіть промпт — зображення оновлюється миттєво під час друку.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Спробуйте намалювати ескіз — ШІ перетворить його на фотореалістичне зображення.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Перемикайтесь між стилями «фото» / «oil painting» / «digital art» у реальному часі.</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Збережіть найкращий результат.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Порівняйте з Gencraft: де швидше? де якість краща? де більше контролю?</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">4</div><h3>Kling — рекламний постер концерту</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Навчитися створювати рекламні графічні матеріали з урахуванням принципів дизайну.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Перейдіть на <a href="https://klingai.com" target="_blank">klingai.com</a> або аналогічний сервіс.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Сформулюйте промпт для постера симфонічного оркестру: тема, атмосфера, кольори, композиція, стиль.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Приклад: «Cinematic poster for symphony orchestra concert, grand concert hall, golden chandeliers, conductor with dramatic gesture, volumetric lighting, rich dark colors, premium design, 4K».</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Згенеруйте зображення.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Створіть 3 варіанти: <b>Класичний</b>, <b>Модерн</b>, <b>Авангард</b> — змінюючи лише стильові слова.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Оцініть кожен варіант за принципами дизайну: ієрархія, контраст, баланс, простір, колір.</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Оберіть найкращий і обґрунтуйте вибір (3–5 речень).</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">5</div><h3>Leonardo AI — казковий герой у несподіваному амплуа</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Розвинути креативність через реінтерпретацію відомих образів, опанувати специфіку Leonardo AI.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Створіть акаунт на <a href="https://leonardo.ai" target="_blank">leonardo.ai</a>.</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Оберіть пару «герой + несподівана роль»: напр. Червона Шапочка → кіберпанк-хакерка; Колобок → космонавт на Марсі.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Формула: [Герой] + [Роль] + [Оточення] + [Стиль] + [Деталі] + [Якість].</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Приклад: «Fantasy character design, Little Red Riding Hood as cyberpunk hacker, neon city background, digital art, concept art style, 4K».</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Оберіть модель DreamShaper/RPG, CFG 7–9, Steps 30–40, збережіть seed.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Згенеруйте зображення.</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Створіть серію 3–4 зображень з тим самим seed (різні ракурси/емоції/фон).</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Оцініть: чи вдалося передати «несподіваність»? Чи впізнаваний образ героя?</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="task">
+          <div class="task-head"><div class="task-num">6</div><h3>ObjectRemover + Fotor — редагування та доповнення</h3><div class="chev">⌄</div></div>
+          <div class="task-body"><div class="task-body-inner">
+            <div class="task-goal">🎯 Опанувати пост-обробку: видалення об'єктів та розширення композиції.</div>
+            <ul class="steps">
+              <li><div class="step-icon">1</div><div class="step-text">Виберіть зображення з попередніх завдань (краще — пейзаж із зайвими елементами).</div></li>
+              <li><div class="step-icon">2</div><div class="step-text">Перейдіть на <a href="https://www.objectremover.com" target="_blank">objectremover.com</a>, завантажте зображення.</div></li>
+              <li><div class="step-icon">3</div><div class="step-text">Виділіть об'єкт для видалення → «Remove» → ШІ заповнює ділянку контекстом.</div></li>
+              <li><div class="step-icon">4</div><div class="step-text">Перевірте природність результату — за потреби повторіть з точнішим виділенням.</div></li>
+              <li><div class="step-icon">5</div><div class="step-text">Збережіть очищене зображення.</div></li>
+              <li><div class="step-icon">6</div><div class="step-text">Перейдіть на <a href="https://www.fotor.com" target="_blank">fotor.com</a>, завантажте очищене зображення.</div></li>
+              <li><div class="step-icon">7</div><div class="step-text">Використайте <b>AI Expand</b> (outpainting) — вкажіть напрямок розширення.</div></li>
+              <li><div class="step-icon">8</div><div class="step-text">Спробуйте <b>AI Replace</b> — замініть об'єкт (напр. колір неба).</div></li>
+              <li><div class="step-icon">✓</div><div class="step-text">Покажіть ланцюжок «до/після»: оригінал → після ObjectRemover → після Fotor.</div></li>
+            </ul>
+          </div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SIMULATOR -->
+    <section class="section" id="simulator">
+      <div class="eyebrow">Симуляція результату</div>
+      <h2>Конструктор сцени: як параметри промпту змінюють зображення</h2>
+      <p class="lead">Змінюйте освітлення, стиль, деталізацію, CFG Scale та негативний промпт — сцена перемальовується миттєво. Це навчальна модель (не звернення до реального генератора), яка ілюструє логіку правил 2, 3, 5, 6 і 8.</p>
+
+      <div class="sim-wrap">
+        <div class="sim-controls">
+          <div class="sim-field">
+            <label>Освітлення / час доби</label>
+            <div class="sim-chip-row" id="simLight">
+              <div class="sim-chip active" data-val="day">День</div>
+              <div class="sim-chip" data-val="golden">Золота година</div>
+              <div class="sim-chip" data-val="night">Ніч</div>
+            </div>
+          </div>
+          <div class="sim-field">
+            <label>Художній стиль</label>
+            <div class="sim-chip-row" id="simStyle">
+              <div class="sim-chip active" data-val="photo">Фотореалізм</div>
+              <div class="sim-chip" data-val="watercolor">Акварель</div>
+              <div class="sim-chip" data-val="anime">Аніме</div>
+              <div class="sim-chip" data-val="pixel">Піксель-арт</div>
+            </div>
+          </div>
+          <div class="sim-field">
+            <label>Деталізація (Steps): <span class="sim-range-val" id="stepsVal">25</span></label>
+            <input type="range" id="simSteps" min="10" max="50" value="25">
+          </div>
+          <div class="sim-field">
+            <label>CFG Scale: <span class="sim-range-val" id="cfgVal">7</span></label>
+            <input type="range" id="simCfg" min="1" max="15" value="7">
+          </div>
+          <div class="sim-field">
+            <label class="sim-toggle-row"><input type="checkbox" id="simNegative" checked style="width:16px;height:16px;accent-color:var(--violet);"> Негативний промпт увімкнено</label>
+          </div>
+        </div>
+
+        <div>
+          <div class="scene-box"><div id="sceneSvg"></div></div>
+          <div class="gauge-row">
+            <div class="gauge"><span>Точність до промпту</span><div class="gauge-bar"><i id="gaugeAccuracy"></i></div></div>
+            <div class="gauge"><span>Творча свобода моделі</span><div class="gauge-bar"><i id="gaugeCreativity"></i></div></div>
+          </div>
+          <div class="sim-prompt-out" id="simPromptOut"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUESTIONS -->
+    <section class="section" id="questions">
+      <div class="eyebrow">Контрольні питання</div>
+      <h2>Перевірте рівень засвоєння</h2>
+      <p class="lead">Питання трьох рівнів складності. Натисніть на питання, щоб побачити довідкову підказку.</p>
+
+      <div class="quiz-tabs">
+        <div class="quiz-tab active" data-tab="basic">Базовий рівень</div>
+        <div class="quiz-tab" data-tab="mid">Середній рівень</div>
+        <div class="quiz-tab" data-tab="adv">Продвинутий рівень</div>
+      </div>
+
+      <div class="quiz-list active" data-list="basic">
+        <div class="q-item"><div class="q-text"><span class="qnum">1.</span>Що таке дифузійна модель і як вона генерує зображення з текстового опису?</div><div class="q-hint">Модель поступово перетворює випадковий шум на структуроване зображення, керуючись промптом. Див. Частину 1.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">2.</span>Яка основна різниця між промптом для тексту та промптом для зображення?</div><div class="q-hint">Текстовий промпт можна уточнювати в діалозі; візуальний промпт має бути точним із першого разу, порядок слів важливий. Див. таблицю Частини 1.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">3.</span>Чому порядок слів у промпті для зображення має значення? Наведіть приклад.</div><div class="q-hint">Слова на початку промпту отримують більшу «вагу». Див. Частину 3.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">4.</span>Що таке негативний промпт і для чого він використовується?</div><div class="q-hint">Опис того, чого не повинно бути на зображенні — усуває артефакти. Див. Правило 5.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">5.</span>Назвіть 5 ключових елементів ефективного промпту для зображення.</div><div class="q-hint">Суб'єкт, фон, стиль, освітлення, камера/техніка, якість — див. формулу в Частині 3.</div></div>
+      </div>
+
+      <div class="quiz-list" data-list="mid">
+        <div class="q-item"><div class="q-text"><span class="qnum">6.</span>Поясніть різницю між Gencraft і Stable Diffusion за критеріями: зручність, контроль, якість, швидкість.</div><div class="q-hint">Gencraft — простіший і швидший; Stable Diffusion — більше контролю та якості за рахунок складності. Див. Частину 2 та Завдання 2.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">7.</span>Як працює real-time генерація у Krea AI?</div><div class="q-hint">Зображення оновлюється миттєво під час введення промпту — дозволяє бачити зміни в реальному часі. Див. Завдання 3.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">8.</span>Що таке CFG Scale, Sampling Steps та Seed? Як вони впливають на результат?</div><div class="q-hint">CFG — сила впливу промпту; Steps — кількість кроків дифузії; Seed — відтворюваність результату. Див. Правило 8.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">9.</span>Опишіть принципи дизайну рекламного постера. Як їх врахувати у промпті?</div><div class="q-hint">Ієрархія, контраст, баланс, простір, колір — вказуйте композицію та кольорову палітру прямо в промпті. Див. Завдання 4.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">10.</span>Як створити серію зображень персонажа з різними ракурсами, зберігаючи впізнаваність?</div><div class="q-hint">Фіксуйте той самий seed і змінюйте лише ракурс/емоцію в промпті. Див. Завдання 5.</div></div>
+      </div>
+
+      <div class="quiz-list" data-list="adv">
+        <div class="q-item"><div class="q-text"><span class="qnum">11.</span>Порівняйте результати генерації одного промпту у 4 різних генераторах.</div><div class="q-hint">Див. картки моделей у Частині 5 — кожен інструмент має власні сильні сторони.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">12.</span>Розробіть власний workflow для створення професійної ілюстрації від ідеї до фінального файлу.</div><div class="q-hint">Комбінуйте текстовий ШІ (промпт) → генератор зображень → ObjectRemover/Fotor (пост-обробка).</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">13.</span>Як використовувати ControlNet у Stable Diffusion для точного контролю композиції?</div><div class="q-hint">Ескіз/поза → ControlNet (OpenPose/Scribble) → текстовий промпт → модель зберігає задану структуру. Див. Правило 10.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">14.</span>Проаналізуйте етичні та правові аспекти використання ШІ-генерації зображень комерційно.</div><div class="q-hint">Авторське право, біаси, deepfake-ризики — див. Частину 6.</div></div>
+        <div class="q-item"><div class="q-text"><span class="qnum">15.</span>Створіть «базу вдалих промптів» для 5 типів візуальних завдань.</div><div class="q-hint">Скористайтесь 4 шаблонами Частини 7 як основою + додайте власний тип.</div></div>
+      </div>
+    </section>
+
+    <!-- REFERENCE -->
+    <section class="section" id="reference">
+      <div class="eyebrow">Довідкові матеріали</div>
+      <h2>Глосарій, підсумкові правила та критерії оцінювання</h2>
+
+      <h4 style="margin-top:8px;">Глосарій термінів</h4>
+      <div class="gloss">
+        <div class="gloss-item"><b>Дифузійна модель</b><span>Модель, що поступово перетворює шум на структуроване зображення, кероване текстовим промптом.</span></div>
+        <div class="gloss-item"><b>Латентний простір</b><span>Стиснене математичне представлення зображення, з яким працює модель замість пікселів напряму.</span></div>
+        <div class="gloss-item"><b>Негативний промпт</b><span>Опис небажаних елементів чи артефактів, яких варто уникати при генерації.</span></div>
+        <div class="gloss-item"><b>Seed</b><span>Початкове число генератора шуму — фіксує відтворюваність результату.</span></div>
+        <div class="gloss-item"><b>CFG Scale</b><span>Параметр, що визначає, наскільки сильно модель слідує тексту промпту.</span></div>
+        <div class="gloss-item"><b>ControlNet</b><span>Розширення Stable Diffusion для керування композицією/позою через додаткові зображення-зразки.</span></div>
+        <div class="gloss-item"><b>Inpainting / Outpainting</b><span>Заміна частини зображення / розширення зображення за межі оригінальної рамки.</span></div>
+        <div class="gloss-item"><b>Вага слова</b><span>Числовий коефіцієнт (напр. 1.3), що підсилює або послаблює вплив конкретного слова у промпті.</span></div>
+      </div>
+
+      <h4 style="margin-top:32px;">Підсумкові правила промпт-інженірингу для зображень</h4>
+      <table class="cmp">
+        <tr><th>№</th><th>Правило</th><th>Коротка суть</th></tr>
+        <tr><td>1</td><td><b>Структура</b></td><td>Що → Де → Як (суб'єкт → фон → стиль)</td></tr>
+        <tr><td>2</td><td><b>Стиль</b></td><td>Завжди вказуйте художній стиль та техніку</td></tr>
+        <tr><td>3</td><td><b>Освітлення</b></td><td>Описуйте тип світла та атмосферу</td></tr>
+        <tr><td>4</td><td><b>Композиція</b></td><td>Вказуйте ракурс, план, перспективу</td></tr>
+        <tr><td>5</td><td><b>Негативний промпт</b></td><td>Описуйте, чого не повинно бути</td></tr>
+        <tr><td>6</td><td><b>Техніка</b></td><td>Додавайте фотографічні параметри</td></tr>
+        <tr><td>7</td><td><b>Вага слів</b></td><td>Керуйте важливістю елементів (для SD)</td></tr>
+        <tr><td>8</td><td><b>Параметри</b></td><td>Налаштовуйте CFG, Steps, Seed</td></tr>
+        <tr><td>9</td><td><b>Редагування</b></td><td>Використовуйте inpainting/outpainting</td></tr>
+        <tr><td>10</td><td><b>ControlNet</b></td><td>Керуйте композицією через ескізи</td></tr>
+      </table>
+
+      <h4 style="margin-top:32px;">Критерії оцінювання практичної роботи</h4>
+      <table class="cmp">
+        <tr><th>Критерій</th><th>Бали</th><th>Опис</th></tr>
+        <tr><td>Виконання всіх 6 завдань</td><td>30</td><td>Кожне завдання виконано повністю, збережено результати</td></tr>
+        <tr><td>Якість згенерованих зображень</td><td>20</td><td>Зображення відповідають промптам, естетично привабливі</td></tr>
+        <tr><td>Креативність у формулюванні промптів</td><td>20</td><td>Промпти оригінальні, не шаблонні, з детальним описом</td></tr>
+        <tr><td>Відповіді на контрольні питання</td><td>20</td><td>Повні, зрозумілі відповіді на всі рівні</td></tr>
+        <tr><td>Оформлення звіту</td><td>10</td><td>Структурований документ зі скріншотами та висновками</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--ink-faint);margin-top:8px;">Максимальна оцінка: 100 балів</p>
+
+      <div class="quote-block">
+        <p>«Коли людина приймає істину без сумніву, вона не пізнає її, а лише носить, мов кайдани, даровані їй іншими.»</p>
+        <span>— Жан-Батіст Ремонуар, французький філософ XIX століття</span>
+      </div>
+    </section>
+
+    <footer>STEAM-HUB · Полтавський університет економіки і торгівлі · Інтерактивний посібник з теми «Загальні поняття. Генерація зображення»</footer>
+  </main>
+</div>
+
+<script>
+/* scrollspy */
+const sections = document.querySelectorAll('.main .section');
+const links = document.querySelectorAll('#toc a');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const id = e.target.getAttribute('id');
+      const active = document.querySelector(`#toc a[href="#${id}"]`);
+      if(active) active.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -70% 0px'});
+sections.forEach(s=>io.observe(s));
+
+/* accordions */
+document.querySelectorAll('.rule-head').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+document.querySelector('#rulesList .rule').classList.add('open');
+document.querySelectorAll('.task-head').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+document.querySelector('#tasksList .task').classList.add('open');
+
+/* quiz tabs */
+document.querySelectorAll('.quiz-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.quiz-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.quiz-list').forEach(l=>l.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`.quiz-list[data-list="${tab.dataset.tab}"]`).classList.add('active');
+  });
+});
+document.querySelectorAll('.q-item').forEach(q=>q.addEventListener('click',()=>q.classList.toggle('open')));
+
+/* ===== SVG helpers ===== */
+const svgNS = "http://www.w3.org/2000/svg";
+function makeSvg(width,height){
+  const svg = document.createElementNS(svgNS,'svg');
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  svg.setAttribute('width','100%');
+  svg.style.display='block';svg.style.margin='0 auto';
+  return svg;
+}
+function el(tag,attrs,svg){
+  const e=document.createElementNS(svgNS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(svg) svg.appendChild(e);
+  return e;
+}
+function txt(svg,x,y,str,opts={}){
+  const t=el('text',{x,y,'font-family':opts.mono?"'JetBrains Mono',monospace":"'Inter',sans-serif",'font-size':opts.size||12,'font-weight':opts.weight||500,fill:opts.fill||'#20222E','text-anchor':opts.anchor||'middle'},svg);
+  t.textContent=str;return t;
+}
+function wrapTxt(svg,x,y,str,maxChars,opts={}){
+  const words=str.split(' ');let lines=[];let cur='';
+  words.forEach(w=>{ if((cur+' '+w).trim().length>maxChars){lines.push(cur.trim());cur=w;} else cur=(cur+' '+w).trim(); });
+  lines.push(cur.trim());
+  lines.forEach((ln,i)=>txt(svg,x,y+i*(opts.lh||14),ln,opts));
+}
+
+/* --- diffusion mini animation in hero --- */
+(function(){
+  const svg = makeSvg(420,220);
+  const cx=210,cy=100,r=70;
+  // noise dots
+  const noiseGroup = el('g',{},svg);
+  for(let i=0;i<160;i++){
+    const angle=Math.random()*Math.PI*2, rad=Math.random()*r;
+    const x=cx+Math.cos(angle)*rad, y=cy+Math.sin(angle)*rad*0.7;
+    const c=el('circle',{cx:x,cy:y,r:Math.random()*2+0.6,fill:'#B8B4E8',opacity:0.8},noiseGroup);
+  }
+  // shape reveal (mountain) - drawn on top, animate opacity in
+  const shape = el('g',{opacity:0},svg);
+  el('path',{d:`M ${cx-90} ${cy+50} L ${cx-30} ${cy-10} L ${cx} ${cy+15} L ${cx+40} ${cy-35} L ${cx+90} ${cy+50} Z`,fill:'#DFF3EA',stroke:'#1F9A78','stroke-width':2},shape);
+  el('circle',{cx:cx+55,cy:cy-45,r:14,fill:'#F8ECD9',stroke:'#C98A2C','stroke-width':2},shape);
+  txt(svg,cx,cy+85,'промпт: "гори, схід сонця, туман"',{size:10.5,fill:'#8A8DA0',mono:true});
+  svg.appendChild(shape);
+  document.getElementById('diffusionAnim').appendChild(svg);
+
+  let t=0;
+  function animate(){
+    t+=0.02;
+    const reveal=Math.min(1,Math.max(0,(Math.sin(t)+1)/2));
+    shape.setAttribute('opacity',reveal);
+    noiseGroup.setAttribute('opacity',1-reveal*0.85);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* --- diffusion steps mind map (part1) --- */
+(function(){
+  const svg = makeSvg(460,170);
+  const labels=['Випадковий\nшум','Крок 1\nчорнові форми','Крок 2\nдеталізація','Фінальне\nзображення'];
+  const xs=[60,190,320,420];
+  const colors=['#EBE8FC','#F8ECD9','#DFF3EA','#DFF3EA'];
+  labels.forEach((l,i)=>{
+    el('circle',{cx:xs[i],cy:70,r:34,fill:colors[i]},svg);
+    l.split('\n').forEach((ln,j)=>txt(svg,xs[i],66+j*13,ln,{size:10.5,weight:600,fill:'#3D33B0'}));
+    if(i<labels.length-1){
+      el('line',{x1:xs[i]+36,y1:70,x2:xs[i+1]-36,y2:70,stroke:'#C9C4F5','stroke-width':2,'marker-end':'url(#arrowD)'},svg);
+    }
+  });
+  const defs=el('defs',{},svg);
+  defs.innerHTML=`<marker id="arrowD" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#C9C4F5"/></marker>`;
+  document.getElementById('diffusionStepsSvg').appendChild(svg);
+})();
+
+/* --- formula mind map (part3) --- */
+(function(){
+  const svg = makeSvg(820,230);
+  const items=["Суб'єкт","Дія/поза","Оточення/фон","Стиль","Освітлення","Камера/техніка","Якість"];
+  const n=items.length, startX=60, endX=760, gap=(endX-startX)/(n-1);
+  items.forEach((it,i)=>{
+    const x=startX+i*gap;
+    el('circle',{cx:x,cy:80,r:30,fill:i%2===0?'#EBE8FC':'#DFF3EA'},svg);
+    txt(svg,x,72,String(i+1),{size:15,weight:700,fill:i%2===0?'#3D33B0':'#1F9A78'});
+    wrapTxt(svg,x,130,it,10,{size:11,weight:600,fill:'#20222E',lh:13});
+    if(i<n-1) el('line',{x1:x+32,y1:80,x2:x+gap-32,y2:80,stroke:'#DEDACB','stroke-width':2,'marker-end':'url(#arrowF)'},svg);
+  });
+  const defs=el('defs',{},svg);
+  defs.innerHTML=`<marker id="arrowF" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#DEDACB"/></marker>`;
+  txt(svg,410,195,"«Фотореалістичний рудий кіт сидить на підвіконні, м'яке вечірнє сонце, Canon EOS R5, 85mm, 8K»",{size:11,fill:'#565A72'});
+  document.getElementById('formulaSvg').appendChild(svg);
+})();
+
+/* --- controlnet workflow mini diagram --- */
+(function(){
+  const svg = makeSvg(700,140);
+  const steps=['Ескіз пози','ControlNet\n(OpenPose)','Текстовий\nпромпт','Зображення\nз точною позою'];
+  const xs=[70,260,450,630];
+  steps.forEach((s,i)=>{
+    el('rect',{x:xs[i]-55,y:45,width:110,height:50,rx:12,fill:i===3?'#DFF3EA':'#EBE8FC'},svg);
+    s.split('\n').forEach((ln,j)=>txt(svg,xs[i],66+j*13,ln,{size:10.5,weight:600,fill:i===3?'#1F9A78':'#3D33B0'}));
+    if(i<steps.length-1) el('line',{x1:xs[i]+56,y1:70,x2:xs[i+1]-56,y2:70,stroke:'#C9C4F5','stroke-width':2,'marker-end':'url(#arrowC)'},svg);
+  });
+  const defs=el('defs',{},svg);
+  defs.innerHTML=`<marker id="arrowC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#C9C4F5"/></marker>`;
+  document.getElementById('controlnetSvg').appendChild(svg);
+})();
+
+/* ===== SCENE SIMULATOR ===== */
+const simState = {light:'day', style:'photo', steps:25, cfg:7, negative:true};
+
+document.querySelectorAll('#simLight .sim-chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#simLight .sim-chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); simState.light=c.dataset.val; renderScene();
+}));
+document.querySelectorAll('#simStyle .sim-chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#simStyle .sim-chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); simState.style=c.dataset.val; renderScene();
+}));
+document.getElementById('simSteps').addEventListener('input',e=>{
+  simState.steps=+e.target.value; document.getElementById('stepsVal').textContent=simState.steps; renderScene();
+});
+document.getElementById('simCfg').addEventListener('input',e=>{
+  simState.cfg=+e.target.value; document.getElementById('cfgVal').textContent=simState.cfg; renderScene();
+});
+document.getElementById('simNegative').addEventListener('change',e=>{
+  simState.negative=e.target.checked; renderScene();
+});
+
+function renderScene(){
+  const box=document.getElementById('sceneSvg');
+  box.innerHTML='';
+  const svg=makeSvg(520,320);
+
+  // sky gradient per lighting
+  const defs=el('defs',{},svg);
+  let skyColors, sunColor, groundLight;
+  if(simState.light==='day'){ skyColors=['#BFE0F5','#EAF6FF']; sunColor='#FFE9A8'; groundLight='#DDEBD0'; }
+  else if(simState.light==='golden'){ skyColors=['#F3A65A','#FCD9A8']; sunColor='#FF9F5A'; groundLight='#E8C79A'; }
+  else { skyColors=['#151A33','#2B2F55']; sunColor='#DCD9F0'; groundLight='#232645'; }
+
+  const grad=el('linearGradient',{id:'skyGrad',x1:'0',y1:'0',x2:'0',y2:'1'},defs);
+  el('stop',{offset:'0%','stop-color':skyColors[0]},grad);
+  el('stop',{offset:'100%','stop-color':skyColors[1]},grad);
+  el('rect',{x:0,y:0,width:520,height:320,fill:'url(#skyGrad)'},svg);
+
+  // saturation / contrast proxy via CFG: higher cfg -> stronger stroke & color intensity
+  const cfgFactor = simState.cfg/15; // 0..1
+  const strokeW = 1 + cfgFactor*2.5;
+
+  // sun / moon
+  el('circle',{cx:400,cy:70,r: simState.light==='night'?26:38,fill:sunColor,opacity: simState.light==='night'?0.9:1},svg);
+  if(simState.light==='night'){
+    for(let i=0;i<40;i++){
+      el('circle',{cx:Math.random()*520,cy:Math.random()*160,r:Math.random()*1.4+0.3,fill:'#fff',opacity:Math.random()*0.8+0.2},svg);
+    }
+  }
+
+  // detail level -> number of mountain layers / trees based on steps
+  const detailLevel = simState.steps<20?1: simState.steps<35?2:3;
+
+  // mountains layered
+  const mountainColors=['#8FA6C9','#6E86AE','#4F6690'];
+  for(let layer=0; layer<detailLevel+1; layer++){
+    const baseY=190+layer*28;
+    const amp=30-layer*6;
+    let d=`M 0 ${baseY+40} `;
+    const pts=6;
+    for(let p=0;p<=pts;p++){
+      const x=p*(520/pts);
+      const y=baseY - (Math.sin(p*1.3+layer)*amp/2+amp/2) - layer*10;
+      d+=`L ${x} ${y} `;
+    }
+    d+=`L 520 320 L 0 320 Z`;
+    el('path',{d,fill:mountainColors[layer%mountainColors.length],opacity:0.55+layer*0.15,stroke: simState.style==='anime'?'#20222E':'none','stroke-width':simState.style==='anime'?2:0},svg);
+  }
+
+  // mist bands
+  for(let i=0;i<detailLevel;i++){
+    el('ellipse',{cx:260,cy:230+i*20,rx:260,ry:14,fill:'#fff',opacity:0.18},svg);
+  }
+
+  // trees (detail dependent)
+  const treeCount = detailLevel*6;
+  for(let i=0;i<treeCount;i++){
+    const x=20+Math.random()*480, y=270+Math.random()*30;
+    el('polygon',{points:`${x},${y-18} ${x-9},${y} ${x+9},${y}`,fill:'#2F6B4F',opacity:0.8},svg);
+  }
+
+  // style overlay treatments
+  if(simState.style==='watercolor'){
+    for(let i=0;i<40;i++){
+      el('circle',{cx:Math.random()*520,cy:Math.random()*320,r:Math.random()*20+8,fill:'#ffffff',opacity:0.05},svg);
+    }
+  }
+  if(simState.style==='pixel'){
+    const grid=el('g',{},svg);
+    for(let x=0;x<520;x+=16){
+      for(let y=0;y<320;y+=16){
+        el('rect',{x,y,width:16,height:16,fill:'none',stroke:'rgba(255,255,255,0.06)','stroke-width':1},grid);
+      }
+    }
+  }
+  if(simState.style==='anime'){
+    el('rect',{x:2,y:2,width:516,height:316,fill:'none',stroke:'#20222E','stroke-width':3},svg);
+  }
+
+  // artifacts if negative prompt off
+  if(!simState.negative){
+    const glitchPts=[[80,120],[440,90],[300,250],[150,260]];
+    glitchPts.forEach(([gx,gy])=>{
+      el('circle',{cx:gx,cy:gy,r:10,fill:'#FBE6E1',stroke:'#D8503F','stroke-width':2},svg);
+      txt(svg,gx,gy+4,'!',{size:12,weight:700,fill:'#D8503F'});
+    });
+  }
+
+  box.appendChild(svg);
+
+  // gauges: accuracy grows with cfg, creativity shrinks; negative prompt improves clean accuracy
+  const accuracy = Math.min(100, Math.round((simState.cfg/15)*70 + (simState.negative?20:0) + (detailLevel*3)));
+  const creativity = Math.max(8, 100-accuracy);
+  document.getElementById('gaugeAccuracy').style.width=accuracy+'%';
+  document.getElementById('gaugeCreativity').style.width=creativity+'%';
+
+  // assembled prompt text
+  const lightMap={day:'сонячний день, яскраве небо',golden:'golden hour, теплі відтінки заходу сонця',night:'нічна сцена, місяць, зорі'};
+  const styleMap={photo:'photorealistic, 8K, ultra-detailed',watercolor:'watercolor, soft edges, transparent layers',anime:'anime style, cel-shaded, bold outlines',pixel:'pixel art, 8-bit, retro game style'};
+  let promptText = `Гірський пейзаж, шарувата композиція, ${lightMap[simState.light]}, ${styleMap[simState.style]}, Steps: ${simState.steps}, CFG Scale: ${simState.cfg}`;
+  if(simState.negative){
+    promptText += `\nNegative prompt: (worst quality, low quality:1.4), blurry, watermark, deformed, distorted`;
+  } else {
+    promptText += `\nNegative prompt: — (вимкнено, можливі артефакти)`;
+  }
+  document.getElementById('simPromptOut').textContent = promptText;
+}
+renderScene();
+</script>
+</body>
+</html>
